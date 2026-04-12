@@ -8,7 +8,7 @@ The official [Model Context Protocol](https://modelcontextprotocol.io) server fo
 
 ## Overview
 
-The Tenzro MCP server is an installable Python package that exposes **109 blockchain tools** across 19 categories to any MCP-compatible AI agent (Claude, GPT, Cursor, Windsurf, etc.) via **stdio** or **Streamable HTTP** transport. Install with `pip install tenzro-mcp-server` and run locally, or connect directly to the live testnet endpoint. Agents can query balances, send transactions, mint NFTs, bridge tokens across 58+ chains, check compliance, subscribe to events, and interact with AI models — all through the standard MCP tool interface.
+The Tenzro MCP server is an installable Python package that exposes **146 blockchain tools** across 26 categories to any MCP-compatible AI agent (Claude, GPT, Cursor, Windsurf, etc.) via **stdio** or **Streamable HTTP** transport. Install with `pip install tenzro-mcp-server` and run locally, or connect directly to the live testnet endpoint. Agents can query balances, send transactions, mint NFTs, bridge tokens across 58+ chains, check compliance, subscribe to events, and interact with AI models — all through the standard MCP tool interface.
 
 **Testnet endpoint:** `https://mcp.tenzro.network/mcp`
 **Local:** `http://localhost:3001/mcp`
@@ -104,7 +104,7 @@ Or with Streamable HTTP transport:
 
 ## Available Tools
 
-The server provides **109 tools** across 19 categories:
+The server provides **146 tools** across 26 categories:
 
 ### Wallet & Ledger (4 tools)
 
@@ -301,6 +301,78 @@ The server provides **109 tools** across 19 categories:
 | `debridge_create_tx` | Create cross-chain transaction via deBridge | `src_chain`, `dst_chain`, `token`, `amount`, `sender`, `recipient` |
 | `debridge_same_chain_swap` | Same-chain swap via deBridge | `chain`, `token_in`, `token_out`, `amount`, `sender` |
 
+### Crypto (9 tools)
+
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| `sign_message` | Sign a message with Ed25519 or Secp256k1 private key | `message`, `private_key`, `key_type` |
+| `verify_signature` | Verify a signature against a message and public key | `message`, `signature`, `public_key` |
+| `encrypt_data` | Encrypt data with AES-256-GCM | `plaintext`, `key` |
+| `decrypt_data` | Decrypt AES-256-GCM ciphertext | `ciphertext`, `key`, `nonce` |
+| `derive_key` | Derive a key using HKDF-SHA256 | `input_key`, `salt`, `info` |
+| `generate_keypair` | Generate Ed25519 or Secp256k1 keypair | `key_type` |
+| `hash_sha256` | Compute SHA-256 hash of data | `data` |
+| `hash_keccak256` | Compute Keccak-256 hash of data | `data` |
+| `x25519_key_exchange` | Perform X25519 Diffie-Hellman key exchange | `private_key`, `peer_public_key` |
+
+### TEE (6 tools)
+
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| `detect_tee` | Detect available TEE hardware (TDX, SEV-SNP, Nitro, NVIDIA GPU) | — |
+| `get_tee_attestation` | Request a TEE attestation report from local hardware | `user_data` |
+| `verify_tee_attestation` | Verify a TEE attestation report and certificate chain | `attestation`, `provider` |
+| `seal_data` | Seal data inside a TEE enclave (AES-256-GCM, hardware-bound key) | `data`, `key_id` |
+| `unseal_data` | Unseal data previously sealed inside a TEE enclave | `sealed_data`, `key_id` |
+| `list_tee_providers` | List registered TEE providers and their attestation status | — |
+
+### ZK Proofs (3 tools)
+
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| `create_zk_proof` | Generate a Groth16 ZK proof for a circuit (inference, settlement, identity) | `circuit`, `private_inputs`, `public_inputs` |
+| `generate_proving_key` | Generate proving and verification keys for a circuit | `circuit` |
+| `list_zk_circuits` | List available ZK circuits and their parameters | — |
+
+### Key Custody (9 tools)
+
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| `create_mpc_wallet` | Create a 2-of-3 MPC threshold wallet with auto key shares | `key_type` |
+| `export_keystore` | Export encrypted keystore (Argon2id KDF) | `address`, `password` |
+| `import_keystore` | Import wallet from encrypted keystore | `keystore_json`, `password` |
+| `get_key_shares` | Get MPC key share metadata (not secret material) | `address` |
+| `rotate_keys` | Rotate MPC key shares for a wallet | `address` |
+| `set_spending_limits` | Set per-transaction and daily spending limits | `address`, `per_tx_limit`, `daily_limit` |
+| `get_spending_limits` | Get current spending limits for a wallet | `address` |
+| `authorize_session` | Create a time-bound session key with restricted permissions | `address`, `duration_secs`, `allowed_operations` |
+| `revoke_session` | Revoke an active session key | `session_id` |
+
+### App/Paymaster (6 tools)
+
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| `register_app` | Register an application for managed wallet and paymaster services | `name`, `owner_address`, `callback_url` |
+| `create_user_wallet` | Create a managed wallet for an app user (ERC-4337 smart account) | `app_id`, `user_id` |
+| `fund_user_wallet` | Fund a managed user wallet from app treasury | `app_id`, `user_id`, `amount_tnzo` |
+| `list_user_wallets` | List managed wallets for an app | `app_id`, `limit` |
+| `sponsor_transaction` | Sponsor gas for a user transaction via paymaster | `app_id`, `user_operation` |
+| `get_usage_stats` | Get app usage statistics (transactions, gas sponsored, users) | `app_id` |
+
+### Contract ABI (2 tools)
+
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| `encode_function` | ABI-encode a function call for EVM contract interaction | `function_signature`, `arguments` |
+| `decode_result` | ABI-decode a return value from an EVM contract call | `function_signature`, `data` |
+
+### Streaming (2 tools)
+
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| `chat_stream` | Stream chat completion tokens via SSE from a served model | `model`, `message`, `temperature`, `max_tokens` |
+| `subscribe_events_stream` | Subscribe to real-time blockchain events via SSE | `filter` |
+
 ### Verification & Onboarding (4 tools)
 
 | Tool | Description | Key Parameters |
@@ -316,12 +388,13 @@ In addition to the main Tenzro MCP server, the node runs specialized servers for
 
 | Server | Port | Endpoint | Description |
 |--------|------|----------|-------------|
-| **Tenzro** | 3001 | `/mcp` | 109 tools for Tenzro Ledger operations |
+| **Tenzro** | 3001 | `/mcp` | 146 tools for Tenzro Ledger operations |
 | **Solana** | 3003 | `/mcp` | Jupiter swaps, SPL tokens, Metaplex NFTs, staking |
 | **Ethereum** | 3004 | `/mcp` | Gas prices, ENS, ERC-20, EAS attestations, ERC-8004 |
 | **Canton** | 3005 | `/mcp` | DAML contracts, CIP-56 tokens, DvP settlement |
 | **LayerZero** | 3006 | `/mcp` | V2 messaging, OFT transfers, DVN configuration |
 | **Chainlink** | 3007 | `/mcp` | CCIP, data feeds, VRF, automation, Functions |
+| **LI.FI** | 3008 | `/mcp` | Cross-chain aggregator, 66 chains, quotes, routes, swaps |
 
 ## Authentication
 
@@ -472,6 +545,13 @@ Tenzro MCP Server (port 3001)
     +-- Agent Marketplace --------> Templates, search, rate, stats, spawn
     +-- Agents & Swarms ----------> Registration, A2A messaging, swarm orchestration
     +-- Settlement & Canton ------> Escrow, micropayments, DAML contracts
+    +-- Crypto (9 tools) ---------> Sign, verify, encrypt, decrypt, hash, key exchange
+    +-- TEE (6 tools) -----------> Hardware attestation, seal/unseal, provider listing
+    +-- ZK Proofs (3 tools) -----> Proof generation, proving keys, circuit listing
+    +-- Key Custody (9 tools) ---> MPC wallets, keystores, key rotation, sessions
+    +-- App/Paymaster (6 tools) -> App registration, managed wallets, gas sponsorship
+    +-- Contract ABI (2 tools) --> ABI encode/decode for EVM contracts
+    +-- Streaming (2 tools) -----> SSE chat streaming, event streaming
     +-- Verification & Onboarding > ZK proofs, MicroNode join, skill/tool usage
     |
     v
