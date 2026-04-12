@@ -1215,6 +1215,76 @@ async def get_tool_usage(tool_id: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# deBridge Cross-Chain (5 tools)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool
+async def debridge_search_tokens(query: str, chain_id: int = None) -> str:
+    """Search for tokens available on deBridge DLN. Returns token addresses, symbols, and supported chains."""
+    params = {"query": query}
+    if chain_id:
+        params["chain_id"] = chain_id
+    result = await rpc_call("tenzro_debridgeSearchTokens", params)
+    return json.dumps(result)
+
+
+@mcp.tool
+async def debridge_get_chains() -> str:
+    """Get all blockchain networks supported by deBridge DLN for cross-chain transfers."""
+    result = await rpc_call("tenzro_debridgeGetChains", {})
+    return json.dumps(result)
+
+
+@mcp.tool
+async def debridge_get_instructions() -> str:
+    """Get deBridge operational instructions and guidance for cross-chain transfers."""
+    result = await rpc_call("tenzro_debridgeGetInstructions", {})
+    return json.dumps(result)
+
+
+@mcp.tool
+async def debridge_create_tx(
+    src_chain_id: int,
+    dst_chain_id: int,
+    src_token: str,
+    dst_token: str,
+    amount: str,
+    recipient: str,
+    sender: str = None,
+) -> str:
+    """Create a cross-chain transaction via deBridge DLN. Returns transaction data ready for signing."""
+    params = {
+        "src_chain_id": src_chain_id,
+        "dst_chain_id": dst_chain_id,
+        "src_token": src_token,
+        "dst_token": dst_token,
+        "amount": amount,
+        "recipient": recipient,
+    }
+    if sender:
+        params["sender"] = sender
+    result = await rpc_call("tenzro_debridgeCreateTx", params)
+    return json.dumps(result)
+
+
+@mcp.tool
+async def debridge_same_chain_swap(
+    chain_id: int,
+    token_in: str,
+    token_out: str,
+    amount: str,
+    sender: str = None,
+) -> str:
+    """Execute a same-chain token swap via deBridge without cross-chain bridging."""
+    params = {"chain_id": chain_id, "token_in": token_in, "token_out": token_out, "amount": amount}
+    if sender:
+        params["sender"] = sender
+    result = await rpc_call("tenzro_debridgeSameChainSwap", params)
+    return json.dumps(result)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

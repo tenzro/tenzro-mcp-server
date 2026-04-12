@@ -8,7 +8,7 @@ The official [Model Context Protocol](https://modelcontextprotocol.io) server fo
 
 ## Overview
 
-The Tenzro MCP server is an installable Python package that exposes **104 blockchain tools** across 18 categories to any MCP-compatible AI agent (Claude, GPT, Cursor, Windsurf, etc.) via **stdio** or **Streamable HTTP** transport. Install with `pip install tenzro-mcp-server` and run locally, or connect directly to the live testnet endpoint. Agents can query balances, send transactions, mint NFTs, bridge tokens across 58+ chains, check compliance, subscribe to events, and interact with AI models — all through the standard MCP tool interface.
+The Tenzro MCP server is an installable Python package that exposes **109 blockchain tools** across 19 categories to any MCP-compatible AI agent (Claude, GPT, Cursor, Windsurf, etc.) via **stdio** or **Streamable HTTP** transport. Install with `pip install tenzro-mcp-server` and run locally, or connect directly to the live testnet endpoint. Agents can query balances, send transactions, mint NFTs, bridge tokens across 58+ chains, check compliance, subscribe to events, and interact with AI models — all through the standard MCP tool interface.
 
 **Testnet endpoint:** `https://mcp.tenzro.network/mcp`
 **Local:** `http://localhost:3001/mcp`
@@ -104,7 +104,7 @@ Or with Streamable HTTP transport:
 
 ## Available Tools
 
-The server provides **104 tools** across 18 categories:
+The server provides **109 tools** across 19 categories:
 
 ### Wallet & Ledger (4 tools)
 
@@ -291,6 +291,16 @@ The server provides **104 tools** across 18 categories:
 | `list_daml_contracts` | List active DAML contracts on a Canton domain | `domain_id`, `template_filter`, `limit` |
 | `submit_daml_command` | Submit a DAML command (create, exercise, create_and_exercise) | `domain_id`, `party`, `command_type`, `template_id`, `arguments` |
 
+### deBridge (5 tools)
+
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| `debridge_search_tokens` | Search tokens on deBridge DLN | `query`, `chain_id` |
+| `debridge_get_chains` | Supported chains for deBridge | — |
+| `debridge_get_instructions` | deBridge operational guidance | `topic` |
+| `debridge_create_tx` | Create cross-chain transaction via deBridge | `src_chain`, `dst_chain`, `token`, `amount`, `sender`, `recipient` |
+| `debridge_same_chain_swap` | Same-chain swap via deBridge | `chain`, `token_in`, `token_out`, `amount`, `sender` |
+
 ### Verification & Onboarding (4 tools)
 
 | Tool | Description | Key Parameters |
@@ -306,7 +316,7 @@ In addition to the main Tenzro MCP server, the node runs specialized servers for
 
 | Server | Port | Endpoint | Description |
 |--------|------|----------|-------------|
-| **Tenzro** | 3001 | `/mcp` | 104 tools for Tenzro Ledger operations |
+| **Tenzro** | 3001 | `/mcp` | 109 tools for Tenzro Ledger operations |
 | **Solana** | 3003 | `/mcp` | Jupiter swaps, SPL tokens, Metaplex NFTs, staking |
 | **Ethereum** | 3004 | `/mcp` | Gas prices, ENS, ERC-20, EAS attestations, ERC-8004 |
 | **Canton** | 3005 | `/mcp` | DAML contracts, CIP-56 tokens, DvP settlement |
@@ -521,6 +531,9 @@ Command-line options:
 | Tenzro Network | [tenzro.com](https://tenzro.com) |
 | A2A Server | [github.com/tenzro/tenzro-a2a-server](https://github.com/tenzro/tenzro-a2a-server) |
 | TenzroClaw | [github.com/tenzro/TenzroClaw](https://github.com/tenzro/TenzroClaw) |
+| LI.FI MCP | Cross-chain bridge aggregation (66 chains) |
+| deBridge MCP | [agents.debridge.com/mcp](https://agents.debridge.com/mcp) |
+| 1inch MCP | [api.1inch.com/mcp/protocol](https://api.1inch.com/mcp/protocol) |
 | MCP Specification | [modelcontextprotocol.io](https://modelcontextprotocol.io) |
 
 ## Contact
