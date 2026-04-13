@@ -39,7 +39,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "tenzro": {
-      "url": "https://mcp.tenzro.network/mcp"
+      "command": "npx", "args": ["-y", "mcp-remote", "https://mcp.tenzro.network/mcp"]
     }
   }
 }
@@ -68,7 +68,7 @@ Add to your project's `.mcp.json`:
   "mcpServers": {
     "tenzro": {
       "type": "url",
-      "url": "https://mcp.tenzro.network/mcp"
+      "command": "npx", "args": ["-y", "mcp-remote", "https://mcp.tenzro.network/mcp"]
     }
   }
 }
