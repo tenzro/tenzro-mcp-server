@@ -8,7 +8,7 @@ The official [Model Context Protocol](https://modelcontextprotocol.io) server fo
 
 ## Overview
 
-The Tenzro MCP server is an installable Python package that exposes **146 blockchain tools** across 26 categories to any MCP-compatible AI agent (Claude, GPT, Cursor, Windsurf, etc.) via **stdio** or **Streamable HTTP** transport. Install with `pip install tenzro-mcp-server` and run locally, or connect directly to the live testnet endpoint. Agents can query balances, send transactions, mint NFTs, bridge tokens across 58+ chains, check compliance, subscribe to events, and interact with AI models — all through the standard MCP tool interface.
+The Tenzro MCP server is an installable Python package that exposes **150 blockchain tools** across 27 categories to any MCP-compatible AI agent (Claude, GPT, Cursor, Windsurf, etc.) via **stdio** or **Streamable HTTP** transport. Install with `pip install tenzro-mcp-server` and run locally, or connect directly to the live testnet endpoint. Agents can query balances, send transactions, mint NFTs, bridge tokens across 58+ chains, check compliance, subscribe to events, and interact with AI models — all through the standard MCP tool interface.
 
 **Testnet endpoint:** `https://mcp.tenzro.network/mcp`
 **Local:** `http://localhost:3001/mcp`
@@ -104,7 +104,7 @@ Or with Streamable HTTP transport:
 
 ## Available Tools
 
-The server provides **146 tools** across 26 categories:
+The server provides **150 tools** across 27 categories:
 
 ### Wallet & Ledger (4 tools)
 
@@ -382,13 +382,22 @@ The server provides **146 tools** across 26 categories:
 | `get_skill_usage` | Get usage statistics for a registered skill | `skill_id` |
 | `get_tool_usage` | Get usage statistics for a registered tool | `tool_id` |
 
+### Onboarding Keys (4 tools)
+
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| `issue_onboarding_key` | Issue an onboarding key for programmatic agent access (shown only once) | `name`, `did`, `address`, `identity_type` |
+| `list_onboarding_keys` | List all onboarding keys without exposing raw key values | — |
+| `revoke_onboarding_key` | Revoke an onboarding key by DID or key hash | `did`, `key_hash` |
+| `validate_onboarding_key` | Validate an onboarding key and return the associated identity info | `key` |
+
 ## Ecosystem MCP Servers
 
 In addition to the main Tenzro MCP server, the node runs specialized servers for direct blockchain interaction:
 
 | Server | Port | Endpoint | Description |
 |--------|------|----------|-------------|
-| **Tenzro** | 3001 | `/mcp` | 146 tools for Tenzro Ledger operations |
+| **Tenzro** | 3001 | `/mcp` | 150 tools for Tenzro Ledger operations |
 | **Solana** | 3003 | `/mcp` | Jupiter swaps, SPL tokens, Metaplex NFTs, staking |
 | **Ethereum** | 3004 | `/mcp` | Gas prices, ENS, ERC-20, EAS attestations, ERC-8004 |
 | **Canton** | 3005 | `/mcp` | DAML contracts, CIP-56 tokens, DvP settlement |
@@ -406,6 +415,58 @@ The MCP server supports **OAuth 2.1** with PKCE (S256) for authenticated access:
 - **Token:** `POST /token` (JWT access tokens with TDIP DID claims)
 
 Unauthenticated access is available for read-only tools on the testnet.
+
+### Tiered Access with Onboarding Keys
+
+For programmatic agent access, the server supports **onboarding keys** — lightweight bearer tokens tied to a TDIP identity:
+
+| Access Tier | Tools | Authentication |
+|-------------|-------|----------------|
+| **Public** | Read-only tools (`get_balance`, `get_block`, `list_models`, etc.) | None required |
+| **Authenticated** | Write tools (`send_transaction`, `stake_tokens`, `register_identity`, etc.) | Onboarding key or OAuth token |
+
+**Getting a key:**
+
+```bash
+# Option 1: CLI (one-command network join)
+tenzro-cli join --name "my-agent"
+
+# Option 2: RPC directly
+curl -X POST https://rpc.tenzro.network \
+  -d '{"jsonrpc":"2.0","method":"tenzro_issueOnboardingKey","params":{"name":"my-agent","did":"did:tenzro:machine:...","address":"0x...","identity_type":"machine"},"id":1}'
+
+# Option 3: MCP tool
+# Call issue_onboarding_key — key is returned once and must be stored securely
+```
+
+**Using a key:**
+
+```
+Authorization: Bearer tenzro_<key>
+```
+
+```typescript
+const transport = new StreamableHTTPClientTransport(
+  new URL("https://mcp.tenzro.network/mcp"),
+  { requestInit: { headers: { Authorization: "Bearer tenzro_..." } } }
+);
+```
+
+**Managing keys:**
+
+```bash
+# List keys (values hidden)
+curl -X POST https://mcp.tenzro.network/mcp \
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"list_onboarding_keys","arguments":{}},"id":1}'
+
+# Revoke by DID
+curl -X POST https://mcp.tenzro.network/mcp \
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"revoke_onboarding_key","arguments":{"did":"did:tenzro:machine:..."}},"id":2}'
+
+# Validate a key
+curl -X POST https://mcp.tenzro.network/mcp \
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"validate_onboarding_key","arguments":{"key":"tenzro_..."}},"id":3}'
+```
 
 ## Programmatic Usage
 
@@ -553,6 +614,7 @@ Tenzro MCP Server (port 3001)
     +-- Contract ABI (2 tools) --> ABI encode/decode for EVM contracts
     +-- Streaming (2 tools) -----> SSE chat streaming, event streaming
     +-- Verification & Onboarding > ZK proofs, MicroNode join, skill/tool usage
+    +-- Onboarding Keys (4 tools) > Issue, list, revoke, validate bearer keys
     |
     v
 Tenzro Ledger (HotStuff-2 BFT, EVM+SVM+DAML)

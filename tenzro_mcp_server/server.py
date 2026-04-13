@@ -1582,6 +1582,44 @@ async def debridge_same_chain_swap(
 
 
 # ---------------------------------------------------------------------------
+# Onboarding Keys (4 tools)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool
+async def issue_onboarding_key(name: str, did: str, address: str, identity_type: str = "machine") -> str:
+    """Issue an onboarding key for programmatic agent access. Returns the key (shown only once)."""
+    result = await rpc_call("tenzro_issueOnboardingKey", {
+        "name": name, "did": did, "address": address, "identity_type": identity_type
+    })
+    return json.dumps(result, indent=2)
+
+
+@mcp.tool
+async def list_onboarding_keys() -> str:
+    """List all onboarding keys (without raw key values)."""
+    result = await rpc_call("tenzro_listOnboardingKeys", {})
+    return json.dumps(result, indent=2)
+
+
+@mcp.tool
+async def revoke_onboarding_key(did: str = None, key_hash: str = None) -> str:
+    """Revoke an onboarding key by DID or key hash."""
+    params = {}
+    if did: params["did"] = did
+    if key_hash: params["key_hash"] = key_hash
+    result = await rpc_call("tenzro_revokeOnboardingKey", params)
+    return json.dumps(result, indent=2)
+
+
+@mcp.tool
+async def validate_onboarding_key(key: str) -> str:
+    """Validate an onboarding key and return the associated identity info."""
+    result = await rpc_call("tenzro_validateOnboardingKey", {"key": key})
+    return json.dumps(result, indent=2)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
