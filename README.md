@@ -8,7 +8,7 @@ The official [Model Context Protocol](https://modelcontextprotocol.io) server fo
 
 ## Overview
 
-The Tenzro MCP server is an installable Python package that exposes **150 blockchain tools** across 27 categories to any MCP-compatible AI agent (Claude, GPT, Cursor, Windsurf, etc.) via **stdio** or **Streamable HTTP** transport. Install with `pip install tenzro-mcp-server` and run locally, or connect directly to the live testnet endpoint. Agents can query balances, send transactions, mint NFTs, bridge tokens across 58+ chains, check compliance, subscribe to events, and interact with AI models — all through the standard MCP tool interface.
+The Tenzro MCP server is an installable Python package that exposes **152 blockchain tools** across 27 categories to any MCP-compatible AI agent (Claude, GPT, Cursor, Windsurf, etc.) via **stdio** or **Streamable HTTP** transport. Install with `pip install tenzro-mcp-server` and run locally, or connect directly to the live testnet endpoint. Agents can query balances, send transactions, mint NFTs, bridge tokens across 58+ chains, check compliance, subscribe to events, and interact with AI models — all through the standard MCP tool interface.
 
 **Testnet endpoint:** `https://mcp.tenzro.network/mcp`
 **Local:** `http://localhost:3001/mcp`
@@ -104,7 +104,7 @@ Or with Streamable HTTP transport:
 
 ## Available Tools
 
-The server provides **150 tools** across 27 categories:
+The server provides **152 tools** across 27 categories:
 
 ### Wallet & Ledger (4 tools)
 
@@ -373,11 +373,13 @@ The server provides **150 tools** across 27 categories:
 | `chat_stream` | Stream chat completion tokens via SSE from a served model | `model`, `message`, `temperature`, `max_tokens` |
 | `subscribe_events_stream` | Subscribe to real-time blockchain events via SSE | `filter` |
 
-### Verification & Onboarding (4 tools)
+### Verification & Onboarding (6 tools)
 
 | Tool | Description | Key Parameters |
 |------|-------------|----------------|
 | `verify_zk_proof` | Verify Groth16, PlonK, or STARK proof with public inputs | `proof`, `proof_type`, `public_inputs` |
+| `verify_vrf_proof` | Verify an ECVRF-EDWARDS25519-SHA512-TAI proof (RFC 9381) and return its 64-byte output | `pubkey`, `proof`, `alpha` |
+| `generate_vrf_proof` | Generate a VRF proof from a 32-byte Ed25519 secret key and input | `secret_key`, `alpha` |
 | `join_as_participant` | Join the network as a zero-install MicroNode participant | `display_name`, `origin`, `participant_type` |
 | `get_skill_usage` | Get usage statistics for a registered skill | `skill_id` |
 | `get_tool_usage` | Get usage statistics for a registered tool | `tool_id` |
