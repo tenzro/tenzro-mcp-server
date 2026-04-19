@@ -8,7 +8,7 @@ The official [Model Context Protocol](https://modelcontextprotocol.io) server fo
 
 ## Overview
 
-The Tenzro MCP server is an installable Python package that exposes **152 blockchain tools** across 27 categories to any MCP-compatible AI agent (Claude, GPT, Cursor, Windsurf, etc.) via **stdio** or **Streamable HTTP** transport. Install with `pip install tenzro-mcp-server` and run locally, or connect directly to the live testnet endpoint. Agents can query balances, send transactions, mint NFTs, bridge tokens across 58+ chains, check compliance, subscribe to events, and interact with AI models — all through the standard MCP tool interface.
+The Tenzro MCP server is an installable Python package that exposes **146 blockchain tools** across 18+ categories to any MCP-compatible AI agent (Claude, GPT, Cursor, Windsurf, etc.) via **stdio** or **Streamable HTTP** transport. Install with `pip install tenzro-mcp-server` and run locally, or connect directly to the live testnet endpoint. Agents can query balances, send transactions, mint NFTs, bridge tokens, check compliance, subscribe to events, and interact with AI models — all through the standard MCP tool interface.
 
 **Testnet endpoint:** `https://mcp.tenzro.network/mcp`
 **Local:** `http://localhost:3001/mcp`
@@ -22,8 +22,8 @@ pip install tenzro-mcp-server
 Or from source:
 
 ```bash
-git clone https://github.com/tenzro/tenzro-mcp-server.git
-cd tenzro-mcp-server
+git clone https://github.com/tenzro/tenzro-network.git
+cd integrations/mcp
 pip install .
 ```
 
@@ -39,7 +39,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "tenzro": {
-      "command": "npx", "args": ["-y", "mcp-remote", "https://mcp.tenzro.network/mcp"]
+      "url": "https://mcp.tenzro.network/mcp"
     }
   }
 }
@@ -68,7 +68,7 @@ Add to your project's `.mcp.json`:
   "mcpServers": {
     "tenzro": {
       "type": "url",
-      "command": "npx", "args": ["-y", "mcp-remote", "https://mcp.tenzro.network/mcp"]
+      "url": "https://mcp.tenzro.network/mcp"
     }
   }
 }
@@ -102,296 +102,242 @@ Or with Streamable HTTP transport:
 - **URL:** `http://localhost:3001/mcp`
 - Start the server first: `tenzro-mcp-server --transport http --port 3001`
 
-## Available Tools
+## Available Tools (146)
 
-The server provides **152 tools** across 27 categories:
+The server provides **146 tools** across 18+ categories (count verified against `@mcp.tool` decorators in `tenzro_mcp_server/server.py`):
 
-### Wallet & Ledger (4 tools)
+### Wallet & Balance (6 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `create_wallet` | Generate new Ed25519 or Secp256k1 keypair | `key_type` |
-| `get_balance` | Query TNZO balance by address | `address` |
-| `send_transaction` | Send TNZO transfer with gas estimation | `from`, `to`, `amount`, `gas_limit` |
-| `request_faucet` | Request 100 testnet TNZO (24h cooldown) | `address` |
+- `get_balance` — Get TNZO balance in wei
+- `create_wallet` — Generate Ed25519 or Secp256k1 keypair
+- `send_transaction` — Send TNZO transfer
+- `request_faucet` — Request 100 testnet TNZO (24h cooldown)
+- `token_balance` — Get TNZO balance via token subsystem
+- `total_supply` — Get total TNZO supply
 
-### Network & Blocks (3 tools)
+### Node & Blocks (3 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `get_node_status` | Node health, block height, peers, uptime, role | — |
-| `get_block` | Get block by height with transactions and metadata | `height` |
-| `get_transaction` | Look up transaction by hash | `tx_hash` |
+- `get_node_status` — Node health, block height, peers, uptime, role
+- `get_block` — Get block by height with transactions
+- `get_transaction` — Look up transaction by hash
 
-### Identity & Delegation (5 tools)
+### Identity (5 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `register_identity` | Register human or machine DID via TDIP | `identity_type`, `display_name`, `controller_did` |
-| `resolve_did` | Resolve DID to identity info and delegation scope | `did` |
-| `set_delegation_scope` | Set spending limits, allowed ops, protocols, chains for machine DID | `machine_did`, `max_transaction_value`, `max_daily_spend`, `allowed_operations`, `allowed_payment_protocols`, `allowed_chains` |
-| `set_username` | Set a globally unique human-readable username for a DID | `did`, `username` |
-| `resolve_username` | Resolve username to its DID | `username` |
+- `register_identity` — Register human or machine DID via TDIP
+- `resolve_did` — Resolve DID to identity info and delegation scope
+- `set_delegation_scope` — Set spending limits and allowed operations for machine DID
+- `set_username` — Set human-readable username for a DID
+- `resolve_username` — Resolve username to DID
 
-### Payments (3 tools)
+### Payments (8 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `create_payment_challenge` | Create MPP, x402, or native payment challenge | `protocol`, `resource`, `amount`, `asset`, `recipient` |
-| `verify_payment` | Verify payment credential and settle on-chain | `challenge_id`, `protocol`, `payer_did`, `payer_address`, `amount`, `asset`, `signature` |
-| `list_payment_protocols` | List supported protocols (MPP, x402, native) | — |
+- `create_payment_challenge` — Create MPP, x402, or native payment challenge
+- `verify_payment` — Verify payment credential and settle on-chain
+- `list_payment_protocols` — List supported payment protocols
+- `settle_payment` — Execute immediate settlement
+- `create_escrow` — Create escrow holding TNZO
+- `release_escrow` — Release escrowed funds
+- `open_payment_channel` — Open micropayment channel
+- `close_payment_channel` — Close payment channel with final balance
 
-### AI Models & Inference (10 tools)
+### AI Models (10 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `list_models` | List available AI models with local/network/downloadable availability | `category`, `name` |
-| `chat_completion` | Send chat completion request to a served model | `model`, `message`, `temperature`, `max_tokens` |
-| `list_model_endpoints` | List model service endpoints with API/MCP URLs and status | — |
-| `download_model` | Download a model from HuggingFace Hub with SHA-256 verification | `model_id` |
-| `serve_model_mcp` | Start serving a downloaded model for inference | `model_id`, `max_concurrent` |
-| `stop_model` | Stop serving a model (remains downloaded) | `model_id` |
-| `delete_model_mcp` | Delete a downloaded model from local storage | `model_id` |
-| `get_download_progress` | Check model download progress and ETA | `model_id` |
-| `discover_models` | Discover models on the network by category, serving status, or max price | `category`, `serving_only`, `max_price_tnzo` |
-| `list_providers` | List all discovered providers on the network (gossipsub) | `provider_type` |
+- `list_models` — List available AI models
+- `chat_completion` — Send chat completion request
+- `list_model_endpoints` — List model service endpoints
+- `discover_models` — Discover models on network
+- `download_model` — Download model from registry
+- `serve_model` — Start serving a model
+- `stop_model` — Stop serving a model
+- `delete_model` — Delete a downloaded model
+- `get_download_progress` — Check model download progress
+- `list_providers` — List registered providers
 
-### Cross-Chain Bridge (5 tools)
+### Staking & Governance (7 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `bridge_tokens` | Bridge tokens via LayerZero, CCIP, or deBridge | `source_chain`, `dest_chain`, `asset`, `amount`, `sender`, `recipient` |
-| `bridge_quote` | Get a bridge quote without executing the transfer | `source_chain`, `dest_chain`, `asset`, `amount`, `sender` |
-| `bridge_with_hook` | Bridge with deBridge post-fulfillment hook for composable cross-chain ops | `source_chain`, `dest_chain`, `asset`, `amount`, `sender`, `recipient`, `hook_target`, `hook_calldata` |
-| `get_bridge_routes` | Get available routes between two chains with fees and timing | `source_chain`, `dest_chain` |
-| `list_bridge_adapters` | List registered bridge adapters (LayerZero, CCIP, deBridge, Canton) | — |
+- `stake_tokens` — Stake TNZO as Validator, ModelProvider, or TeeProvider
+- `unstake_tokens` — Unstake TNZO (initiates unbonding)
+- `register_provider` — Register as network provider
+- `get_provider_stats` — Get provider statistics
+- `list_proposals` — List active governance proposals
+- `vote_on_proposal` — Vote on a proposal (for/against/abstain)
+- `get_voting_power` — Get voting power based on staked TNZO
 
-### NFT Operations (6 tools)
+### Bridge (5 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `create_nft_collection` | Create ERC-721 or ERC-1155 collection | `name`, `symbol`, `creator`, `standard` |
-| `mint_nft` | Mint an NFT in a collection (unique for ERC-721, multi-copy for ERC-1155) | `collection_id`, `to`, `token_id`, `uri` |
-| `transfer_nft` | Transfer NFT ownership within a collection | `collection_id`, `from`, `to`, `token_id` |
-| `get_nft_info` | Query NFT collection or specific token info (owner, URI, supply) | `collection_id`, `token_id` |
-| `list_nft_collections` | List all NFT collections, optionally filter by creator or standard | `creator`, `standard`, `limit` |
-| `register_nft_pointer` | Register cross-VM NFT pointer (EVM/SVM/DAML) for discoverability | `collection_id`, `vm`, `address` |
+- `bridge_tokens` — Bridge tokens via LayerZero, CCIP, or deBridge
+- `get_bridge_routes` — Get available routes with fees and timing
+- `list_bridge_adapters` — List bridge adapters
+- `bridge_quote` — Get bridge fee quote
+- `bridge_with_hook` — Bridge with post-delivery hook
 
-### ERC-7802 Cross-Chain Tokens (3 tools)
+### Tokens (7 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `crosschain_mint` | Mint tokens via authorized bridge (ERC-7802 crosschainMint) | `bridge`, `to`, `amount`, `sender` |
-| `crosschain_burn` | Burn tokens for cross-chain transfer (ERC-7802 crosschainBurn) | `bridge`, `from`, `amount`, `destination` |
-| `authorize_crosschain_bridge` | Authorize a bridge for crosschain mint/burn with daily rate limits | `bridge`, `name`, `daily_mint_limit`, `daily_burn_limit` |
+- `create_token` — Create ERC-20 token via factory
+- `get_token_info` — Look up token by symbol, address, or ID
+- `list_tokens` — List registered tokens
+- `deploy_contract` — Deploy bytecode to EVM/SVM/DAML
+- `cross_vm_transfer` — Atomic cross-VM token transfer
+- `wrap_tnzo` — Wrap native TNZO to VM representation
+- `get_token_balance` — Get TNZO balance across all VMs
 
-### ERC-3643 Compliance (3 tools)
+### Tasks (7 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `check_compliance` | Check if a transfer is compliant (KYC, accreditation, country, balance caps) | `token_id`, `from`, `to`, `amount` |
-| `register_compliance` | Register compliance rules for a token (KYC, holder limits, country restrictions) | `token_id`, rules |
-| `freeze_address` | Freeze an address for compliance (blocks send and receive) | `token_id`, `address`, `reason` |
+- `post_task` — Post task to marketplace
+- `list_tasks` — List tasks by type or status
+- `get_task` — Get task details
+- `quote_task` — Submit price quote for a task
+- `assign_task` — Assign task to agent
+- `complete_task` — Mark task complete with result
+- `cancel_task` — Cancel a task
 
-### Events & Streaming (3 tools)
+### Agents (9 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `get_events` | Query historical events with cursor-based pagination | `filter`, `from_sequence`, `limit` |
-| `subscribe_events` | Register event filter for real-time WebSocket/gRPC streaming | `filter` |
-| `register_webhook` | Register webhook for event notifications (HMAC-SHA256 signed) | `url`, `filter`, `secret` |
+- `register_agent` — Register AI agent with capabilities
+- `send_agent_message` — Send inter-agent message via A2A
+- `spawn_agent` — Spawn child agent
+- `create_swarm` — Create multi-agent swarm
+- `get_swarm_status` — Get swarm status
+- `terminate_swarm` — Terminate swarm
+- `list_agents` — List all registered agents
+- `get_agent_info` — Get agent details
+- `deregister_agent` — Deregister an agent
 
-### Staking & Providers (8 tools)
+### Agent Templates (7 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `stake_tokens` | Stake TNZO as Validator, ModelProvider, TeeProvider, or StorageProvider | `amount`, `provider_type` |
-| `unstake_tokens` | Unstake TNZO (begins 7-day unbonding) | `address` |
-| `register_provider` | Register as a service provider with optional staking | `provider_type`, `name`, `stake`, `max_concurrent` |
-| `get_provider_stats` | Get provider statistics (served models, inference count, earnings) | `address` |
-| `set_provider_pricing` | Set inference pricing (price per 1k tokens, minimum charge) | `provider_address`, `price_per_1k_tokens`, `min_charge_tnzo` |
-| `get_provider_pricing` | Get current pricing configuration | `provider_address` |
-| `set_provider_schedule` | Set availability schedule (hours, days, timezone) | `provider_address`, `schedule` |
-| `get_provider_schedule` | Get current availability schedule | `provider_address` |
+- `register_agent_template` — Register reusable template
+- `list_agent_templates` — List available templates
+- `get_agent_template` — Get template details
+- `search_agent_templates` — Search by name or description
+- `spawn_from_template` — Spawn agent from template
+- `rate_template` — Rate template (1-5 stars)
+- `get_template_stats` — Get template usage stats
 
-### Governance (5 tools)
+### NFTs (6 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `list_proposals` | List governance proposals by status | `status`, `limit`, `offset` |
-| `create_proposal` | Create a new governance proposal | `title`, `description`, `proposal_type`, `proposer_address`, `payload` |
-| `vote_on_proposal` | Vote on an active proposal (yes/no/abstain) | `proposal_id`, `vote`, `voter_address` |
-| `get_voting_power` | Get voting power for an address (staked + delegated) | `address` |
-| `delegate_voting_power` | Delegate voting power to another address | `from_address`, `to_address`, `amount_tnzo` |
+- `create_nft_collection` — Create ERC-721 or ERC-1155 collection
+- `mint_nft` — Mint NFT in collection
+- `transfer_nft` — Transfer NFT ownership
+- `get_nft_info` — Query collection or token info
+- `list_nft_collections` — List NFT collections
+- `register_nft_pointer` — Register cross-VM NFT pointer
 
-### Token Registry (9 tools)
+### Compliance (3 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `token_balance` | Get TNZO balance in atto-TNZO and human-readable decimal | `address` |
-| `total_supply` | Get total TNZO supply (atto-TNZO and decimal) | — |
-| `create_token` | Create a new ERC-20 token via the token factory | `name`, `symbol`, `creator`, `initial_supply`, `decimals` |
-| `get_token_info` | Get token info by symbol, token ID, or EVM address | `query` |
-| `list_tokens` | List all registered tokens, optionally filter by VM type or creator | `vm_type`, `creator` |
-| `deploy_contract` | Deploy a smart contract (EVM bytecode, SVM BPF, or DAML DAR) | `vm_type`, `bytecode`, `deployer` |
-| `cross_vm_transfer` | Transfer tokens atomically between VMs (e.g., EVM to SVM) | `from_vm`, `to_vm`, `address`, `amount` |
-| `wrap_tnzo` | Wrap native TNZO to VM representation (no-op in pointer model) | `target_vm`, `address` |
-| `get_token_balance` | Get TNZO balance across all VMs (native, EVM, SVM, DAML) | `address` |
+- `check_compliance` — Check if transfer is compliant
+- `register_compliance` — Register compliance rules
+- `freeze_address` — Freeze address for compliance
 
-### Task Marketplace (7 tools)
+### Canton (3 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `post_task` | Post a task to the marketplace | `title`, `description`, `task_type`, `poster_address`, `max_price_tnzo`, `input` |
-| `list_tasks` | List tasks with filters (type, status, poster, price) | `task_type`, `status`, `poster`, `max_price_tnzo`, `limit` |
-| `get_task` | Get details about a specific task | `task_id` |
-| `quote_task` | Submit a price quote for a task | `task_id`, `provider_address`, `price_tnzo`, `model_id`, `estimated_secs` |
-| `assign_task` | Assign a task to a specific agent | `task_id`, `agent_did` |
-| `complete_task` | Mark a task as completed with result payload and optional proof | `task_id`, `agent_did`, `result`, `proof_hex` |
-| `cancel_task` | Cancel a pending/active task (refunds escrowed TNZO) | `task_id`, `requester_address` |
+- `list_canton_domains` — List Canton synchronization domains
+- `list_daml_contracts` — List active DAML contracts
+- `submit_daml_command` — Submit DAML command
 
-### Agent Marketplace (9 tools)
+### Verification (1 tool)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `register_agent_template` | Publish an agent template with system prompt, capabilities, pricing | `name`, `description`, `template_type`, `creator_address`, `system_prompt`, `tags`, `pricing` |
-| `list_agent_templates` | Browse agent templates by type, tag, creator, or price | `template_type`, `tag`, `creator`, `free_only`, `limit` |
-| `get_agent_template` | Get details about a specific agent template | `template_id` |
-| `search_agent_templates` | Search templates by query (name, description, tags) | `query` |
-| `get_agent_template_stats` | Get template stats (total spawns, average rating, rating count) | `template_id` |
-| `spawn_agent_from_template` | Spawn an agent instance from a marketplace template | `template_id`, `name` |
-| `download_agent_template` | Download and instantiate a template with config overrides | `template_id`, `controller_did`, `config_overrides` |
-| `update_agent_template` | Update metadata for a template you own | `template_id`, fields |
-| `rate_agent_template` | Rate a template 1-5 with optional review | `template_id`, `rating`, `review` |
+- `verify_zk_proof` — Verify Groth16, PlonK, or STARK proof
 
-### Agents & Swarms (9 tools)
+### Events (3 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `register_agent` | Register an AI agent identity with auto-provisioned MPC wallet | `name`, `agent_type`, `controller_did`, `capabilities`, `endpoint` |
-| `send_agent_message` | Send inter-agent message via A2A protocol | `from_did`, `to_did`, `message_type`, `payload` |
-| `delegate_task` | Delegate a task from one agent to another with optional budget cap | `delegator_did`, `delegate_did`, `task`, `max_budget_tnzo` |
-| `discover_agents` | Discover agents by capability or type | `capability`, `agent_type`, `limit` |
-| `spawn_agent` | Spawn a child agent under a parent (max 50 children) | `parent_id`, `name`, `capabilities` |
-| `run_agent_task` | Run an agentic task loop with built-in tools until completion | `agent_id`, `task`, `inference_url` |
-| `create_swarm` | Create a coordinated multi-agent swarm | `orchestrator_id`, `members`, `max_members`, `task_timeout_secs`, `parallel` |
-| `get_swarm_status` | Get swarm status including per-member agent statuses and results | `swarm_id` |
-| `terminate_swarm` | Terminate a swarm and all its member agents | `swarm_id` |
+- `get_events` — Query historical events
+- `subscribe_events` — Subscribe to real-time events
+- `register_webhook` — Register webhook for notifications
 
-### Settlement & Canton (8 tools)
+### Join (1 tool)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `settle_payment` | Execute immediate settlement between two addresses | `payer`, `payee`, `amount_tnzo`, `service_type`, `reference_id` |
-| `create_escrow` | Create an escrow holding TNZO pending release conditions | `payer`, `payee`, `amount_tnzo`, `release_condition`, `timeout_secs` |
-| `release_escrow` | Release escrowed funds with authorizing signature | `escrow_id`, `signer_address`, `signature_hex` |
-| `open_payment_channel` | Open micropayment channel for off-chain per-token billing | `sender`, `recipient`, `deposit_tnzo` |
-| `close_payment_channel` | Close payment channel with final balance and sender signature | `channel_id`, `final_balance_tnzo`, `sender_signature_hex` |
-| `list_canton_domains` | List Canton synchronizer domains and connection status | — |
-| `list_daml_contracts` | List active DAML contracts on a Canton domain | `domain_id`, `template_filter`, `limit` |
-| `submit_daml_command` | Submit a DAML command (create, exercise, create_and_exercise) | `domain_id`, `party`, `command_type`, `template_id`, `arguments` |
+- `join_as_participant` — Join network as MicroNode
 
-### deBridge (5 tools)
+### Skills Registry (5 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `debridge_search_tokens` | Search tokens on deBridge DLN | `query`, `chain_id` |
-| `debridge_get_chains` | Supported chains for deBridge | — |
-| `debridge_get_instructions` | deBridge operational guidance | `topic` |
-| `debridge_create_tx` | Create cross-chain transaction via deBridge | `src_chain`, `dst_chain`, `token`, `amount`, `sender`, `recipient` |
-| `debridge_same_chain_swap` | Same-chain swap via deBridge | `chain`, `token_in`, `token_out`, `amount`, `sender` |
+- `list_skills` — List registered skills
+- `register_skill` — Register new skill
+- `search_skills` — Search by keyword or tag
+- `get_skill` — Get skill details
+- `use_skill` — Invoke a skill
+
+### Tools Registry (5 tools)
+
+- `list_registered_tools` — List registered MCP tools
+- `register_tool` — Register MCP server endpoint
+- `search_tools` — Search tools by keyword
+- `get_tool_info` — Get tool details
+- `use_registered_tool` — Invoke a registered tool
+
+### Hardware (1 tool)
+
+- `get_hardware_profile` — Detect hardware capabilities
+
+### Usage (2 tools)
+
+- `get_skill_usage` — Get skill usage statistics
+- `get_tool_usage` — Get tool usage statistics
 
 ### Crypto (9 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `sign_message` | Sign a message with Ed25519 or Secp256k1 private key | `message`, `private_key`, `key_type` |
-| `verify_signature` | Verify a signature against a message and public key | `message`, `signature`, `public_key` |
-| `encrypt_data` | Encrypt data with AES-256-GCM | `plaintext`, `key` |
-| `decrypt_data` | Decrypt AES-256-GCM ciphertext | `ciphertext`, `key`, `nonce` |
-| `derive_key` | Derive a key using HKDF-SHA256 | `input_key`, `salt`, `info` |
-| `generate_keypair` | Generate Ed25519 or Secp256k1 keypair | `key_type` |
-| `hash_sha256` | Compute SHA-256 hash of data | `data` |
-| `hash_keccak256` | Compute Keccak-256 hash of data | `data` |
-| `x25519_key_exchange` | Perform X25519 Diffie-Hellman key exchange | `private_key`, `peer_public_key` |
+- `sign_message` — Sign message with Ed25519 or Secp256k1
+- `verify_signature` — Verify signature
+- `encrypt_data` — AES-256-GCM encryption
+- `decrypt_data` — AES-256-GCM decryption
+- `derive_key` — Derive child key from seed
+- `generate_keypair` — Generate new keypair
+- `hash_sha256` — Compute SHA-256 hash
+- `hash_keccak256` — Compute Keccak-256 hash
+- `x25519_key_exchange` — X25519 Diffie-Hellman key exchange
 
 ### TEE (6 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `detect_tee` | Detect available TEE hardware (TDX, SEV-SNP, Nitro, NVIDIA GPU) | — |
-| `get_tee_attestation` | Request a TEE attestation report from local hardware | `user_data` |
-| `verify_tee_attestation` | Verify a TEE attestation report and certificate chain | `attestation`, `provider` |
-| `seal_data` | Seal data inside a TEE enclave (AES-256-GCM, hardware-bound key) | `data`, `key_id` |
-| `unseal_data` | Unseal data previously sealed inside a TEE enclave | `sealed_data`, `key_id` |
-| `list_tee_providers` | List registered TEE providers and their attestation status | — |
+- `detect_tee` — Detect available TEE hardware
+- `get_tee_attestation` — Get TEE attestation quote
+- `verify_tee_attestation_rpc` — Verify attestation quote
+- `seal_data` — Seal data inside TEE enclave
+- `unseal_data` — Unseal TEE-sealed data
+- `list_tee_providers` — List registered TEE providers
 
-### ZK Proofs (3 tools)
+### ZK (3 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `create_zk_proof` | Generate a Groth16 ZK proof for a circuit (inference, settlement, identity) | `circuit`, `private_inputs`, `public_inputs` |
-| `generate_proving_key` | Generate proving and verification keys for a circuit | `circuit` |
-| `list_zk_circuits` | List available ZK circuits and their parameters | — |
+- `create_zk_proof` — Create zero-knowledge proof
+- `generate_proving_key` — Generate proving key for circuit
+- `list_zk_circuits` — List available ZK circuits
 
-### Key Custody (9 tools)
+### Custody (9 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `create_mpc_wallet` | Create a 2-of-3 MPC threshold wallet with auto key shares | `key_type` |
-| `export_keystore` | Export encrypted keystore (Argon2id KDF) | `address`, `password` |
-| `import_keystore` | Import wallet from encrypted keystore | `keystore_json`, `password` |
-| `get_key_shares` | Get MPC key share metadata (not secret material) | `address` |
-| `rotate_keys` | Rotate MPC key shares for a wallet | `address` |
-| `set_spending_limits` | Set per-transaction and daily spending limits | `address`, `per_tx_limit`, `daily_limit` |
-| `get_spending_limits` | Get current spending limits for a wallet | `address` |
-| `authorize_session` | Create a time-bound session key with restricted permissions | `address`, `duration_secs`, `allowed_operations` |
-| `revoke_session` | Revoke an active session key | `session_id` |
+- `create_mpc_wallet` — Create MPC threshold wallet
+- `export_keystore` — Export encrypted keystore
+- `import_keystore` — Import from keystore
+- `get_key_shares` — Get MPC key share configuration
+- `rotate_keys` — Rotate MPC key shares
+- `set_spending_limits` — Set daily and per-tx limits
+- `get_spending_limits` — Get spending limits and usage
+- `authorize_session` — Create time-limited session key
+- `revoke_session` — Revoke active session key
 
-### App/Paymaster (6 tools)
+### App (6 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `register_app` | Register an application for managed wallet and paymaster services | `name`, `owner_address`, `callback_url` |
-| `create_user_wallet` | Create a managed wallet for an app user (ERC-4337 smart account) | `app_id`, `user_id` |
-| `fund_user_wallet` | Fund a managed user wallet from app treasury | `app_id`, `user_id`, `amount_tnzo` |
-| `list_user_wallets` | List managed wallets for an app | `app_id`, `limit` |
-| `sponsor_transaction` | Sponsor gas for a user transaction via paymaster | `app_id`, `user_operation` |
-| `get_usage_stats` | Get app usage statistics (transactions, gas sponsored, users) | `app_id` |
+- `register_app` — Register app for custody services
+- `create_user_wallet` — Create custodial wallet for app user
+- `fund_user_wallet` — Fund user wallet from app treasury
+- `list_user_wallets` — List app's user wallets
+- `sponsor_transaction` — Sponsor transaction (app pays gas)
+- `get_usage_stats` — Get app usage statistics
 
-### Contract ABI (2 tools)
+### Contract Encoding (2 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `encode_function` | ABI-encode a function call for EVM contract interaction | `function_signature`, `arguments` |
-| `decode_result` | ABI-decode a return value from an EVM contract call | `function_signature`, `data` |
+- `encode_function` — ABI-encode smart contract function call
+- `decode_result` — ABI-decode return data
 
 ### Streaming (2 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `chat_stream` | Stream chat completion tokens via SSE from a served model | `model`, `message`, `temperature`, `max_tokens` |
-| `subscribe_events_stream` | Subscribe to real-time blockchain events via SSE | `filter` |
+- `chat_stream` — Stream chat completion token by token
+- `subscribe_events_stream` — Subscribe to events via streaming
 
-### Verification & Onboarding (6 tools)
+### deBridge Cross-Chain (5 tools)
 
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `verify_zk_proof` | Verify Groth16, PlonK, or STARK proof with public inputs | `proof`, `proof_type`, `public_inputs` |
-| `verify_vrf_proof` | Verify an ECVRF-EDWARDS25519-SHA512-TAI proof (RFC 9381) and return its 64-byte output | `pubkey`, `proof`, `alpha` |
-| `generate_vrf_proof` | Generate a VRF proof from a 32-byte Ed25519 secret key and input | `secret_key`, `alpha` |
-| `join_as_participant` | Join the network as a zero-install MicroNode participant | `display_name`, `origin`, `participant_type` |
-| `get_skill_usage` | Get usage statistics for a registered skill | `skill_id` |
-| `get_tool_usage` | Get usage statistics for a registered tool | `tool_id` |
-
-### Onboarding Keys (4 tools)
-
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `issue_onboarding_key` | Issue an onboarding key for programmatic agent access (shown only once) | `name`, `did`, `address`, `identity_type` |
-| `list_onboarding_keys` | List all onboarding keys without exposing raw key values | — |
-| `revoke_onboarding_key` | Revoke an onboarding key by DID or key hash | `did`, `key_hash` |
-| `validate_onboarding_key` | Validate an onboarding key and return the associated identity info | `key` |
+- `debridge_search_tokens` — Search tokens on deBridge DLN
+- `debridge_get_chains` — Get supported chains
+- `debridge_get_instructions` — Get operational instructions
+- `debridge_create_tx` — Create cross-chain transaction
+- `debridge_same_chain_swap` — Execute same-chain swap
 
 ## Ecosystem MCP Servers
 
@@ -399,76 +345,12 @@ In addition to the main Tenzro MCP server, the node runs specialized servers for
 
 | Server | Port | Endpoint | Description |
 |--------|------|----------|-------------|
-| **Tenzro** | 3001 | `/mcp` | 150 tools for Tenzro Ledger operations |
+| **Tenzro** | 3001 | `/mcp` | 141 tools for Tenzro Ledger operations |
 | **Solana** | 3003 | `/mcp` | Jupiter swaps, SPL tokens, Metaplex NFTs, staking |
 | **Ethereum** | 3004 | `/mcp` | Gas prices, ENS, ERC-20, EAS attestations, ERC-8004 |
 | **Canton** | 3005 | `/mcp` | DAML contracts, CIP-56 tokens, DvP settlement |
 | **LayerZero** | 3006 | `/mcp` | V2 messaging, OFT transfers, DVN configuration |
 | **Chainlink** | 3007 | `/mcp` | CCIP, data feeds, VRF, automation, Functions |
-| **LI.FI** | 3008 | `/mcp` | Cross-chain aggregator, 66 chains, quotes, routes, swaps |
-
-## Authentication
-
-The MCP server supports **OAuth 2.1** with PKCE (S256) for authenticated access:
-
-- **Discovery:** `GET /.well-known/oauth-authorization-server`
-- **Registration:** `POST /register` (dynamic client registration, RFC 7591)
-- **Authorization:** `GET /authorize` (PKCE flow with user consent UI)
-- **Token:** `POST /token` (JWT access tokens with TDIP DID claims)
-
-Unauthenticated access is available for read-only tools on the testnet.
-
-### Tiered Access with Onboarding Keys
-
-For programmatic agent access, the server supports **onboarding keys** — lightweight bearer tokens tied to a TDIP identity:
-
-| Access Tier | Tools | Authentication |
-|-------------|-------|----------------|
-| **Public** | Read-only tools (`get_balance`, `get_block`, `list_models`, etc.) | None required |
-| **Authenticated** | Write tools (`send_transaction`, `stake_tokens`, `register_identity`, etc.) | Onboarding key or OAuth token |
-
-**Getting a key:**
-
-```bash
-# Option 1: CLI (one-command network join)
-tenzro-cli join --name "my-agent"
-
-# Option 2: RPC directly
-curl -X POST https://rpc.tenzro.network \
-  -d '{"jsonrpc":"2.0","method":"tenzro_issueOnboardingKey","params":{"name":"my-agent","did":"did:tenzro:machine:...","address":"0x...","identity_type":"machine"},"id":1}'
-
-# Option 3: MCP tool
-# Call issue_onboarding_key — key is returned once and must be stored securely
-```
-
-**Using a key:**
-
-```
-Authorization: Bearer tenzro_<key>
-```
-
-```typescript
-const transport = new StreamableHTTPClientTransport(
-  new URL("https://mcp.tenzro.network/mcp"),
-  { requestInit: { headers: { Authorization: "Bearer tenzro_..." } } }
-);
-```
-
-**Managing keys:**
-
-```bash
-# List keys (values hidden)
-curl -X POST https://mcp.tenzro.network/mcp \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"list_onboarding_keys","arguments":{}},"id":1}'
-
-# Revoke by DID
-curl -X POST https://mcp.tenzro.network/mcp \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"revoke_onboarding_key","arguments":{"did":"did:tenzro:machine:..."}},"id":2}'
-
-# Validate a key
-curl -X POST https://mcp.tenzro.network/mcp \
-  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"validate_onboarding_key","arguments":{"key":"tenzro_..."}},"id":3}'
-```
 
 ## Programmatic Usage
 
@@ -504,25 +386,6 @@ const nft = await client.callTool({
     uri: "ipfs://Qm...",
   },
 });
-
-// Bridge tokens via LI.FI (58+ chains)
-const bridge = await client.callTool({
-  name: "bridge_quote",
-  arguments: {
-    from_chain: "ethereum",
-    to_chain: "arbitrum",
-    token: "USDC",
-    amount: "1000000000",
-  },
-});
-
-// Subscribe to events
-const sub = await client.callTool({
-  name: "subscribe_events",
-  arguments: {
-    filter: { event_types: ["Transfer", "Log"] },
-  },
-});
 ```
 
 ### Python
@@ -549,16 +412,6 @@ async with streamablehttp_client("https://mcp.tenzro.network/mcp") as (read, wri
                 "amount": "1000000",
             },
         )
-
-        # Register a webhook
-        webhook = await session.call_tool(
-            "register_webhook",
-            arguments={
-                "url": "https://myapp.com/webhook",
-                "filter": {"event_types": ["Transfer"]},
-                "secret": "my-hmac-secret-key-here",
-            },
-        )
 ```
 
 ### curl
@@ -581,45 +434,6 @@ curl -s -X POST https://mcp.tenzro.network/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_node_status","arguments":{}}}'
-```
-
-## Architecture
-
-```
-AI Agent (Claude, GPT, Cursor, etc.)
-    |
-    |  Streamable HTTP (POST /mcp)
-    v
-Tenzro MCP Server (port 3001)
-    |
-    +-- Wallet & Ledger ----------> Ed25519/Secp256k1 keys, TNZO transfers
-    +-- Identity (TDIP) ----------> DID registration, delegation, usernames
-    +-- Payments (MPP/x402) ------> HTTP 402 payment challenges, Stripe/Coinbase
-    +-- AI Models (10 tools) -----> HuggingFace download, inference, provider discovery
-    +-- NFTs (ERC-721/1155) ------> Collections, minting, cross-VM pointers
-    +-- Bridge (LZ/CCIP/deBridge)-> Quotes, hooks, multi-chain transfers
-    +-- Compliance (ERC-3643) ----> KYC checks, freeze, compliance rules
-    +-- Cross-Chain (ERC-7802) ---> Authorized mint/burn with rate limits
-    +-- Events & Webhooks --------> Real-time streaming, HMAC-signed callbacks
-    +-- Staking & Providers ------> Validator/provider staking, pricing, scheduling
-    +-- Governance (5 tools) -----> Proposals, voting, delegation
-    +-- Token Registry (8 tools) -> ERC-20 factory, cross-VM, contract deployment
-    +-- Task Marketplace ---------> Post, quote, assign, complete tasks
-    +-- Agent Marketplace --------> Templates, search, rate, stats, spawn
-    +-- Agents & Swarms ----------> Registration, A2A messaging, swarm orchestration
-    +-- Settlement & Canton ------> Escrow, micropayments, DAML contracts
-    +-- Crypto (9 tools) ---------> Sign, verify, encrypt, decrypt, hash, key exchange
-    +-- TEE (6 tools) -----------> Hardware attestation, seal/unseal, provider listing
-    +-- ZK Proofs (3 tools) -----> Proof generation, proving keys, circuit listing
-    +-- Key Custody (9 tools) ---> MPC wallets, keystores, key rotation, sessions
-    +-- App/Paymaster (6 tools) -> App registration, managed wallets, gas sponsorship
-    +-- Contract ABI (2 tools) --> ABI encode/decode for EVM contracts
-    +-- Streaming (2 tools) -----> SSE chat streaming, event streaming
-    +-- Verification & Onboarding > ZK proofs, MicroNode join, skill/tool usage
-    +-- Onboarding Keys (4 tools) > Issue, list, revoke, validate bearer keys
-    |
-    v
-Tenzro Ledger (HotStuff-2 BFT, EVM+SVM+DAML)
 ```
 
 ## Running the Server
@@ -665,19 +479,14 @@ Command-line options:
 - **MCP Version:** 2024-11-05
 - **Transport:** Streamable HTTP (stateless JSON mode)
 - **Content Types:** `application/json`, `text/event-stream`
-- **Authentication:** OAuth 2.1 with PKCE S256 (optional on testnet)
-- **Framework:** [rmcp](https://crates.io/crates/rmcp) 1.2
+- **Framework:** [fastmcp](https://pypi.org/project/fastmcp/)
 
 ## Related
 
 | Resource | URL |
 |----------|-----|
 | Tenzro Network | [tenzro.com](https://tenzro.com) |
-| A2A Server | [github.com/tenzro/tenzro-a2a-server](https://github.com/tenzro/tenzro-a2a-server) |
-| TenzroClaw | [github.com/tenzro/TenzroClaw](https://github.com/tenzro/TenzroClaw) |
-| LI.FI MCP | Cross-chain bridge aggregation (66 chains) |
-| deBridge MCP | [agents.debridge.com/mcp](https://agents.debridge.com/mcp) |
-| 1inch MCP | [api.1inch.com/mcp/protocol](https://api.1inch.com/mcp/protocol) |
+| A2A Server | [github.com/tenzro/tenzro-network](https://github.com/tenzro/tenzro-network) |
 | MCP Specification | [modelcontextprotocol.io](https://modelcontextprotocol.io) |
 
 ## Contact
