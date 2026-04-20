@@ -34,21 +34,42 @@ async def create_wallet(key_type: str = "ed25519") -> str:
 
 @mcp.tool
 async def send_transaction(
-    from_addr: str, to_addr: str, amount: str, gas_limit: int = 21000
+    from_addr: str,
+    to_addr: str,
+    amount: str,
+    private_key: str,
+    gas_limit: int = 21000,
+    gas_price: int = 1_000_000_000,
 ) -> str:
-    """Send a TNZO transfer transaction from one address to another."""
-    nonce = await rpc_call("eth_getTransactionCount", [from_addr, "latest"])
-    chain_id = await rpc_call("eth_chainId", [])
-    tx = {
-        "from": from_addr,
-        "to": to_addr,
-        "value": amount,
-        "gas": hex(gas_limit),
-        "nonce": nonce,
-        "chainId": chain_id,
-    }
-    result = await rpc_call("eth_sendRawTransaction", [tx])
-    return json.dumps({"tx_hash": result})
+    """Send a TNZO transfer transaction with server-side signing.
+
+    Uses tenzro_signAndSendTransaction which signs the canonical
+    Transaction::hash() preimage (including timestamp) and submits
+    atomically. The node synchronously verifies the Ed25519 signature
+    before accepting the transaction.
+    """
+    nonce_hex = await rpc_call("eth_getTransactionCount", [from_addr, "latest"])
+    chain_id_hex = await rpc_call("eth_chainId", [])
+    nonce = int(nonce_hex, 16) if isinstance(nonce_hex, str) else 0
+    chain_id = int(chain_id_hex, 16) if isinstance(chain_id_hex, str) else 1337
+    if isinstance(amount, str) and amount.startswith("0x"):
+        value_int = int(amount, 16)
+    else:
+        value_int = int(amount)
+    result = await rpc_call(
+        "tenzro_signAndSendTransaction",
+        {
+            "from": from_addr,
+            "to": to_addr,
+            "value": value_int,
+            "gas_limit": gas_limit,
+            "gas_price": gas_price,
+            "nonce": nonce,
+            "chain_id": chain_id,
+            "private_key": private_key,
+        },
+    )
+    return json.dumps({"tx_hash": result} if isinstance(result, str) else result)
 
 
 @mcp.tool
