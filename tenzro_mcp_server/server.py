@@ -1031,7 +1031,7 @@ async def verify_zk_proof(
 ) -> str:
     """Verify a zero-knowledge proof (Groth16, PlonK, or STARK) with public inputs."""
     result = await api_call(
-        "/api/verify/zk-proof",
+        "/verify/zk-proof",
         "POST",
         {
             "proof": proof,
