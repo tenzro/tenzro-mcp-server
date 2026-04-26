@@ -135,8 +135,10 @@ The server provides **146 tools** across 18+ categories (count verified against 
 - `verify_payment` — Verify payment credential and settle on-chain
 - `list_payment_protocols` — List supported payment protocols
 - `settle_payment` — Execute immediate settlement
-- `create_escrow` — Create escrow holding TNZO
-- `release_escrow` — Release escrowed funds
+- `create_escrow` — Build & sign a `CreateEscrow` transaction (consensus-mediated, gas: 75,000). VM derives `escrow_id` and locks funds at a derived vault address.
+- `release_escrow` — Build & sign a `ReleaseEscrow` transaction (payer-only, gas: 60,000)
+- `refund_escrow` — Build & sign a `RefundEscrow` transaction (after expiry, payer-only, gas: 50,000)
+- `get_escrow` — Read an escrow record by id (calls `tenzro_getEscrow`)
 - `open_payment_channel` — Open micropayment channel
 - `close_payment_channel` — Close payment channel with final balance
 

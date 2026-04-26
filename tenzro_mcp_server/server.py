@@ -37,16 +37,17 @@ async def send_transaction(
     from_addr: str,
     to_addr: str,
     amount: str,
-    private_key: str,
     gas_limit: int = 21000,
     gas_price: int = 1_000_000_000,
 ) -> str:
-    """Send a TNZO transfer transaction with server-side signing.
+    """Send a TNZO transfer transaction via ambient OAuth/DPoP auth.
 
-    Uses tenzro_signAndSendTransaction which signs the canonical
-    Transaction::hash() preimage (including timestamp) and submits
-    atomically. The node synchronously verifies the Ed25519 signature
-    before accepting the transaction.
+    Uses tenzro_signAndSendTransaction which looks up the wallet bound
+    to the bearer DID (forwarded by the Tenzro MCP middleware via
+    Authorization: DPoP <jwt> + DPoP: <proof>) and signs the canonical
+    Transaction::hash() preimage on its behalf, then submits atomically.
+    The node synchronously verifies the Ed25519 signature before
+    accepting the transaction. Private keys never travel over the wire.
     """
     nonce_hex = await rpc_call("eth_getTransactionCount", [from_addr, "latest"])
     chain_id_hex = await rpc_call("eth_chainId", [])
@@ -66,7 +67,6 @@ async def send_transaction(
             "gas_price": gas_price,
             "nonce": nonce,
             "chain_id": chain_id,
-            "private_key": private_key,
         },
     )
     return json.dumps({"tx_hash": result} if isinstance(result, str) else result)
@@ -228,20 +228,177 @@ async def settle_payment(
     return json.dumps(result)
 
 
-@mcp.tool
-async def create_escrow(payer: str, payee: str, amount: str) -> str:
-    """Create an escrow between a payer and payee for a specified amount."""
-    result = await rpc_call(
-        "tenzro_createEscrow",
-        {"payer": payer, "payee": payee, "amount": amount},
+def _release_conditions_payload(release_conditions: str) -> dict:
+    """Map a release-condition keyword to the typed payload expected by the VM."""
+    key = release_conditions.lower()
+    if key in ("timeout",):
+        return {"type": "Timeout"}
+    if key in ("provider", "provider_signature"):
+        return {"type": "ProviderSignature"}
+    if key in ("consumer", "consumer_signature"):
+        return {"type": "ConsumerSignature"}
+    if key in ("both", "both_signatures"):
+        return {"type": "BothSignatures"}
+    if key in ("verifier", "verifier_signature"):
+        return {"type": "VerifierSignature"}
+    if key == "custom":
+        return {"type": "Custom", "data": ""}
+    raise ValueError(
+        f"unsupported release condition '{release_conditions}': use "
+        "timeout|provider|consumer|both|verifier|custom"
     )
-    return json.dumps(result)
+
+
+def _parse_escrow_id(escrow_id_hex: str) -> list:
+    """Parse a 32-byte hex escrow id into a list of byte ints."""
+    clean = escrow_id_hex[2:] if escrow_id_hex.startswith("0x") else escrow_id_hex
+    if len(clean) != 64:
+        raise ValueError(f"escrow_id must be 32 bytes (64 hex chars), got {len(clean)}")
+    return list(bytes.fromhex(clean))
+
+
+async def _fetch_nonce_and_chain_id(address: str) -> tuple:
+    nonce_hex = await rpc_call("eth_getTransactionCount", [address, "latest"])
+    chain_id_hex = await rpc_call("eth_chainId", [])
+    nonce = int(nonce_hex, 16) if isinstance(nonce_hex, str) else 0
+    chain_id = int(chain_id_hex, 16) if isinstance(chain_id_hex, str) else 1337
+    return nonce, chain_id
 
 
 @mcp.tool
-async def release_escrow(escrow_id: str) -> str:
-    """Release funds held in an escrow to the payee."""
-    result = await rpc_call("tenzro_releaseEscrow", [escrow_id])
+async def create_escrow(
+    payer: str,
+    payee: str,
+    amount: str,
+    asset: str = "TNZO",
+    expires_at: int = 0,
+    release_conditions: str = "timeout",
+) -> str:
+    """Create an on-chain escrow via a signed CreateEscrow transaction.
+
+    Uses ambient OAuth/DPoP auth — the bearer JWT must belong to `payer`;
+    the server signs on behalf of the bound wallet. Private keys never
+    travel over the wire.
+
+    The escrow_id is derived deterministically by the VM as
+    SHA-256("tenzro/escrow/id/v1" || payer || nonce_le) and funds are locked
+    at a vault address derived from that id. Only the original payer can
+    later release or refund.
+
+    `release_conditions` is one of:
+    timeout | provider | consumer | both | verifier | custom
+    """
+    conditions = _release_conditions_payload(release_conditions)
+    nonce, chain_id = await _fetch_nonce_and_chain_id(payer)
+    tx_type = {
+        "type": "CreateEscrow",
+        "data": {
+            "payee": payee,
+            "amount": str(amount),
+            "asset_id": asset,
+            "expires_at": int(expires_at),
+            "release_conditions": conditions,
+        },
+    }
+    result = await rpc_call(
+        "tenzro_signAndSendTransaction",
+        {
+            "from": payer,
+            "to": payee,
+            "value": 0,
+            "gas_limit": 75_000,
+            "gas_price": 1_000_000_000,
+            "nonce": nonce,
+            "chain_id": chain_id,
+            "tx_type": tx_type,
+        },
+    )
+    return json.dumps({"tx_hash": result} if isinstance(result, str) else result)
+
+
+@mcp.tool
+async def release_escrow(
+    payer: str,
+    escrow_id: str,
+    proof_data_hex: str = "",
+) -> str:
+    """Release escrowed funds to the payee via a signed ReleaseEscrow transaction.
+
+    Uses ambient OAuth/DPoP auth — the bearer JWT must belong to the
+    original payer. The VM rejects releases from any other address.
+    """
+    escrow_id_bytes = _parse_escrow_id(escrow_id)
+    proof_bytes = []
+    if proof_data_hex:
+        clean = proof_data_hex[2:] if proof_data_hex.startswith("0x") else proof_data_hex
+        proof_bytes = list(bytes.fromhex(clean))
+    nonce, chain_id = await _fetch_nonce_and_chain_id(payer)
+    tx_type = {
+        "type": "ReleaseEscrow",
+        "data": {
+            "escrow_id": escrow_id_bytes,
+            "proof": {
+                "proof_type": "Timeout",
+                "proof_data": proof_bytes,
+                "signatures": [],
+            },
+        },
+    }
+    result = await rpc_call(
+        "tenzro_signAndSendTransaction",
+        {
+            "from": payer,
+            "to": "0x" + "00" * 32,
+            "value": 0,
+            "gas_limit": 60_000,
+            "gas_price": 1_000_000_000,
+            "nonce": nonce,
+            "chain_id": chain_id,
+            "tx_type": tx_type,
+        },
+    )
+    return json.dumps({"tx_hash": result} if isinstance(result, str) else result)
+
+
+@mcp.tool
+async def refund_escrow(payer: str, escrow_id: str) -> str:
+    """Refund escrowed funds back to the payer via a signed RefundEscrow transaction.
+
+    Uses ambient OAuth/DPoP auth — the bearer JWT must belong to the
+    original payer. The escrow must be expired (or use Timeout/Custom
+    release conditions).
+    """
+    escrow_id_bytes = _parse_escrow_id(escrow_id)
+    nonce, chain_id = await _fetch_nonce_and_chain_id(payer)
+    tx_type = {
+        "type": "RefundEscrow",
+        "data": {"escrow_id": escrow_id_bytes},
+    }
+    result = await rpc_call(
+        "tenzro_signAndSendTransaction",
+        {
+            "from": payer,
+            "to": "0x" + "00" * 32,
+            "value": 0,
+            "gas_limit": 50_000,
+            "gas_price": 1_000_000_000,
+            "nonce": nonce,
+            "chain_id": chain_id,
+            "tx_type": tx_type,
+        },
+    )
+    return json.dumps({"tx_hash": result} if isinstance(result, str) else result)
+
+
+@mcp.tool
+async def get_escrow(escrow_id: str) -> str:
+    """Inspect an escrow record by its 32-byte hex id."""
+    clean = escrow_id[2:] if escrow_id.startswith("0x") else escrow_id
+    if len(clean) != 64:
+        raise ValueError(f"escrow_id must be 32 bytes (64 hex chars), got {len(clean)}")
+    result = await rpc_call(
+        "tenzro_getEscrow", [{"escrow_id": "0x" + clean}]
+    )
     return json.dumps(result)
 
 
