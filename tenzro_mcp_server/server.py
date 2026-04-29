@@ -27,7 +27,15 @@ async def get_balance(address: str) -> str:
 
 @mcp.tool
 async def create_wallet(key_type: str = "ed25519") -> str:
-    """Create a new wallet keypair. key_type can be 'ed25519' or 'secp256k1'."""
+    """Provision a self-custody Tenzro 2-of-3 MPC wallet.
+
+    Returns the canonical Tenzro wallet shape: ``wallet_id``, 32-byte hex
+    ``address`` (the form used by ``eth_getBalance``, the faucet, and all
+    transaction RPCs), base58 ``display_address``, ``public_key``,
+    ``key_type`` (``ed25519`` or ``secp256k1``), ``threshold`` (2), and
+    ``total_shares`` (3). No seed phrase or private key is ever returned —
+    the keystore holds shares and the node never sees a full key.
+    """
     result = await rpc_call("tenzro_createWallet", [key_type])
     return json.dumps(result)
 

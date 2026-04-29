@@ -111,7 +111,7 @@ The server provides **146 tools** across 18+ categories (count verified against 
 ### Wallet & Balance (6 tools)
 
 - `get_balance` — Get TNZO balance in wei
-- `create_wallet` — Generate Ed25519 or Secp256k1 keypair
+- `create_wallet` — Provision a self-custody Tenzro 2-of-3 MPC wallet (32-byte address, no seed phrase)
 - `send_transaction` — Send TNZO transfer
 - `request_faucet` — Request 100 testnet TNZO (24h cooldown)
 - `token_balance` — Get TNZO balance via token subsystem
