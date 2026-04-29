@@ -1,4 +1,4 @@
-"""Tenzro Network MCP Server — 141 blockchain tools for AI agents.
+"""Tenzro Network MCP Server — 146 blockchain tools for AI agents.
 
 Exposes the full Tenzro Network JSON-RPC interface as MCP tools,
 enabling AI agents to interact with the Tenzro L1 settlement layer,
@@ -99,6 +99,107 @@ async def total_supply() -> str:
     """Get the total TNZO token supply."""
     result = await rpc_call("tenzro_totalSupply", [])
     return json.dumps({"total_supply": result})
+
+
+# ---------------------------------------------------------------------------
+# OAuth 2.1 + DPoP Onboarding (5 tools)
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool
+async def onboard_human(display_name: str, dpop_jkt: str = "", ttl_secs: int = 0) -> str:
+    """Provision a fresh human TDIP identity + MPC wallet and mint a
+    self-custody OAuth 2.1 access JWT + opaque refresh token.
+
+    Pass ``dpop_jkt`` (RFC 7638 thumbprint of a client-held P-256 / Ed25519
+    public key) to mint a DPoP-bound token; omit it for the simpler bearer
+    flow. ``ttl_secs`` is optional and clamped server-side.
+    """
+    params = {"display_name": display_name}
+    if dpop_jkt:
+        params["dpop_jkt"] = dpop_jkt
+    if ttl_secs:
+        params["ttl_secs"] = ttl_secs
+    result = await rpc_call("tenzro_onboardHuman", [params])
+    return json.dumps(result)
+
+
+@mcp.tool
+async def onboard_delegated_agent(
+    controller_did: str,
+    capabilities: list,
+    delegation_scope: dict,
+    dpop_jkt: str = "",
+) -> str:
+    """Onboard an agent that acts on behalf of ``controller_did``.
+
+    The agent inherits the controller's act-chain — revoking the
+    controller cascades. ``capabilities`` is a list of capability
+    strings; ``delegation_scope`` is the spend/operation envelope.
+    """
+    params = {
+        "controller_did": controller_did,
+        "capabilities": capabilities,
+        "delegation_scope": delegation_scope,
+    }
+    if dpop_jkt:
+        params["dpop_jkt"] = dpop_jkt
+    result = await rpc_call("tenzro_onboardDelegatedAgent", [params])
+    return json.dumps(result)
+
+
+@mcp.tool
+async def onboard_autonomous_agent(bond_funding_address: str, dpop_jkt: str = "") -> str:
+    """Onboard a fully autonomous agent — requires a slashable TNZO bond
+    posted at ``bond_funding_address``."""
+    params = {"bond_funding_address": bond_funding_address}
+    if dpop_jkt:
+        params["dpop_jkt"] = dpop_jkt
+    result = await rpc_call("tenzro_onboardAutonomousAgent", [params])
+    return json.dumps(result)
+
+
+@mcp.tool
+async def refresh_token(refresh_token_value: str, dpop_jkt: str = "") -> str:
+    """Exchange an opaque refresh token for a fresh access JWT.
+
+    Mirrors OAuth 2.1 ``grant_type=refresh_token``. The same refresh
+    token may be re-used until its absolute 30-day expiry (no rotation
+    in V1). Pass ``dpop_jkt`` to upgrade an unbound session to
+    DPoP-bound or to rotate the bound key.
+    """
+    params = {"refresh_token": refresh_token_value}
+    if dpop_jkt:
+        params["dpop_jkt"] = dpop_jkt
+    result = await rpc_call("tenzro_refreshToken", [params])
+    return json.dumps(result)
+
+
+@mcp.tool
+async def link_wallet_for_auth(
+    wallet_id: str,
+    dpop_jkt: str = "",
+    display_name: str = "",
+    ttl_secs: int = 0,
+) -> str:
+    """Bind an existing MPC wallet to a fresh self-custody TDIP identity
+    and mint an access JWT.
+
+    Bridges ``create_wallet`` (which returns only ``wallet_id`` +
+    ``address``) to the auth-mediated signing path: callers who created
+    a wallet first can later obtain an access token bound to that
+    wallet by passing back ``wallet_id`` plus an optional DPoP key
+    thumbprint. Returns the same envelope as ``onboard_human``.
+    """
+    params = {"wallet_id": wallet_id}
+    if dpop_jkt:
+        params["dpop_jkt"] = dpop_jkt
+    if display_name:
+        params["display_name"] = display_name
+    if ttl_secs:
+        params["ttl_secs"] = ttl_secs
+    result = await rpc_call("tenzro_linkWalletForAuth", [params])
+    return json.dumps(result)
 
 
 # ---------------------------------------------------------------------------

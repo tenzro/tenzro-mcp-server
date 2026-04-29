@@ -108,6 +108,17 @@ Or with Streamable HTTP transport:
 
 The server provides **146 tools** across 18+ categories (count verified against `@mcp.tool` decorators in `tenzro_mcp_server/server.py`):
 
+### Authentication (OAuth 2.1 + DPoP)
+
+- `onboard_human` — Provision a `did:tenzro:human:*` identity, MPC wallet, and access + refresh tokens (RFC 6749 + RFC 9449).
+- `onboard_delegated_agent` — Issue an agent identity bound to a controller DID with a delegation scope.
+- `onboard_autonomous_agent` — Issue a fully autonomous agent identity backed by a TNZO bond.
+- `refresh_token` — Exchange a refresh token for a fresh access token (refresh tokens are not rotated in V1).
+- `link_wallet_for_auth` — Mint a fresh access + refresh token pair against an existing MPC wallet.
+- `revoke_jwt` / `revoke_did` — Revoke a single JWT by `jti` or cascade-invalidate every JWT minted under a DID.
+
+Pass `dpop_jkt` (RFC 7638 thumbprint of the holder's Ed25519 public key) to bind the issued token — every subsequent privileged call must then carry a fresh DPoP proof signed by the same key.
+
 ### Wallet & Balance (6 tools)
 
 - `get_balance` — Get TNZO balance in wei
