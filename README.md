@@ -8,7 +8,9 @@ The official [Model Context Protocol](https://modelcontextprotocol.io) server fo
 
 ## Overview
 
-The Tenzro MCP server is an installable Python package that exposes **146 blockchain tools** across 18+ categories to any MCP-compatible AI agent (Claude, GPT, Cursor, Windsurf, etc.) via **stdio** or **Streamable HTTP** transport. Install with `pip install tenzro-mcp-server` and run locally, or connect directly to the live testnet endpoint. Agents can query balances, send transactions, mint NFTs, bridge tokens, check compliance, subscribe to events, and interact with AI models — all through the standard MCP tool interface.
+The Tenzro MCP server is an installable Python package that exposes blockchain and multi-modal AI tools across 19+ categories to any MCP-compatible AI agent (Claude, GPT, Cursor, Windsurf, etc.) via **stdio** or **Streamable HTTP** transport. Install with `pip install tenzro-mcp-server` and run locally, or connect directly to the live testnet endpoint. Agents can query balances, send transactions, mint NFTs, bridge tokens, check compliance, subscribe to events, run timeseries forecasts, embed images and text, segment and detect objects, transcribe audio, and interact with AI models — all through the standard MCP tool interface.
+
+The companion Tenzro Rust node MCP server (`crates/tenzro-node/src/mcp/server.rs`) registers **191 tools** including the 24 multi-modal AI tools described below.
 
 **Testnet endpoint:** `https://mcp.tenzro.network/mcp`
 **Local:** `http://localhost:3001/mcp`
@@ -155,6 +157,18 @@ The server provides **146 tools** across 18+ categories (count verified against 
 - `get_download_progress` — Check model download progress
 - `list_providers` — List registered providers
 
+### Multi-Modal AI (24 tools)
+
+Per-modality `list_*_catalog`, `list_*_models`, `load_*_model`, `unload_*_model`, plus the modality verb. Catalogs draw from `OnnxForecastEntry`, `OnnxVisionEntry`, `OnnxTextEmbeddingEntry`, `OnnxSegmentationEntry`, `OnnxDetectionEntry`, `OnnxAudioEntry`, and `OnnxVideoEntry` in `tenzro-model`. License-tier gating (Permissive / Attribution / CommercialCustom / NonCommercial) is enforced at load time.
+
+- **Forecast** — `list_forecast_catalog`, `list_forecast_models`, `load_forecast_model`, `unload_forecast_model`, `forecast` (Chronos-2, Chronos-Bolt small/base, TimesFM 2.5 200M, Granite-TTM-r2)
+- **Vision** — `list_vision_catalog`, `list_vision_models`, `load_vision_model`, `unload_vision_model`, `vision_embed`, `vision_similarity` (CLIP ViT-B/32 + L/14, SigLIP2 base/large/so400m, DINOv3 vits16/vitb16/vitl16, DINOv2)
+- **Text Embedding** — `list_text_embedding_catalog`, `list_text_embedding_models`, `load_text_embedding_model`, `unload_text_embedding_model`, `text_embed` (Qwen3-Embedding 0.6B/4B/8B, EmbeddingGemma-300M Matryoshka, BGE-M3, Snowflake Arctic Embed L v2.0)
+- **Segmentation** — `list_segmentation_catalog`, `list_segmentation_models`, `load_segmentation_model`, `unload_segmentation_model`, `segment` (SAM 3 / 3.1, SAM 2 base/large, EdgeSAM, MobileSAM)
+- **Detection** — `list_detection_catalog`, `list_detection_models`, `load_detection_model`, `unload_detection_model`, `detect` (RF-DETR n/s/m/b/l/2xl, D-FINE n/s/m/l/x)
+- **Audio (ASR)** — `list_audio_catalog`, `list_audio_models`, `load_audio_model`, `unload_audio_model`, `transcribe` (Moonshine v2 tiny/base, Distil-Whisper small.en/medium.en/large-v3, Whisper-large-v3-turbo, Parakeet-TDT-0.6B-v3, Canary-1B-Flash)
+- **Video** — `list_video_catalog`, `list_video_models`, `load_video_model`, `unload_video_model`, `video_embed` (encoder scaffolding only — wave 1 catalog empty)
+
 ### Staking & Governance (7 tools)
 
 - `stake_tokens` — Stake TNZO as Validator, ModelProvider, or TeeProvider
@@ -238,7 +252,7 @@ The server provides **146 tools** across 18+ categories (count verified against 
 
 ### Verification (1 tool)
 
-- `verify_zk_proof` — Verify Groth16, PlonK, or STARK proof
+- `verify_zk_proof` — Verify Plonky3 STARK proof over the KoalaBear field; requires `circuit_id` ∈ {inference, settlement, identity} and 4-byte LE field-chunk public inputs
 
 ### Events (3 tools)
 
@@ -296,10 +310,9 @@ The server provides **146 tools** across 18+ categories (count verified against 
 - `unseal_data` — Unseal TEE-sealed data
 - `list_tee_providers` — List registered TEE providers
 
-### ZK (3 tools)
+### ZK (2 tools)
 
-- `create_zk_proof` — Create zero-knowledge proof
-- `generate_proving_key` — Generate proving key for circuit
+- `create_zk_proof` — Create a Plonky3 STARK proof over KoalaBear (`inference`, `settlement`, `identity` circuits)
 - `list_zk_circuits` — List available ZK circuits
 
 ### Custody (9 tools)
@@ -347,7 +360,7 @@ In addition to the main Tenzro MCP server, the node runs specialized servers for
 
 | Server | Port | Endpoint | Description |
 |--------|------|----------|-------------|
-| **Tenzro** | 3001 | `/mcp` | 141 tools for Tenzro Ledger operations |
+| **Tenzro** | 3001 | `/mcp` | 191 tools for Tenzro Ledger + multi-modal AI operations |
 | **Solana** | 3003 | `/mcp` | Jupiter swaps, SPL tokens, Metaplex NFTs, staking |
 | **Ethereum** | 3004 | `/mcp` | Gas prices, ENS, ERC-20, EAS attestations, ERC-8004 |
 | **Canton** | 3005 | `/mcp` | DAML contracts, CIP-56 tokens, DvP settlement |

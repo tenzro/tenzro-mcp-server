@@ -1184,15 +1184,19 @@ async def submit_daml_command(
 
 @mcp.tool
 async def verify_zk_proof(
-    proof: str, proof_type: str, public_inputs: list[str]
+    proof: str, circuit_id: str, public_inputs: list[str]
 ) -> str:
-    """Verify a zero-knowledge proof (Groth16, PlonK, or STARK) with public inputs."""
+    """Verify a Plonky3 STARK proof over the KoalaBear field.
+
+    circuit_id: one of "inference", "settlement", "identity"
+    public_inputs: list of hex-encoded 4-byte little-endian KoalaBear field-element chunks
+    """
     result = await api_call(
         "/verify/zk-proof",
         "POST",
         {
-            "proof": proof,
-            "proof_type": proof_type,
+            "proof_bytes": proof,
+            "circuit_id": circuit_id,
             "public_inputs": public_inputs,
         },
     )
@@ -1508,28 +1512,31 @@ async def list_tee_providers() -> str:
 
 
 # ---------------------------------------------------------------------------
-# ZK (3 tools)
+# ZK (2 tools)
 # ---------------------------------------------------------------------------
 
 
 @mcp.tool
-async def create_zk_proof(circuit: str, inputs: str) -> str:
-    """Create a zero-knowledge proof for the given circuit and inputs (JSON)."""
-    result = await rpc_call("tenzro_createZkProof", {"circuit": circuit, "inputs": inputs})
-    return json.dumps(result)
+async def create_zk_proof(circuit_id: str, witness: str) -> str:
+    """Create a Plonky3 STARK proof over the KoalaBear field.
 
-
-@mcp.tool
-async def generate_proving_key(circuit: str) -> str:
-    """Generate a proving key for a ZK circuit (Groth16 on BN254)."""
-    result = await rpc_call("tenzro_generateProvingKey", {"circuit": circuit})
+    circuit_id: one of "inference", "settlement", "identity"
+    witness: JSON object with circuit-specific witness fields, e.g.
+        - inference: {"model_checksum": <u64>, "input_checksum": <u64>, "computed_output": <u64>}
+        - settlement: {"payer_balance": <u64>, "service_proof": <u64>, "nonce": <u64>,
+                       "prev_nonce": <u64>, "amount": <u64>}
+        - identity:   {"private_key": <u64>, "capabilities": <u64>, "capability_blinding": <u64>,
+                       "actual_reputation": <u64>, "minimum_reputation": <u64>}
+    """
+    params = {"circuit_id": circuit_id, **json.loads(witness)}
+    result = await rpc_call("tenzro_createZkProof", params)
     return json.dumps(result)
 
 
 @mcp.tool
 async def list_zk_circuits() -> str:
-    """List available ZK circuits (InferenceVerification, SettlementProof, IdentityProof)."""
-    result = await rpc_call("tenzro_listZkCircuits", [])
+    """List available ZK circuits (inference, settlement, identity — all Plonky3 STARKs over KoalaBear)."""
+    result = await rpc_call("tenzro_listCircuits", [])
     return json.dumps(result)
 
 
