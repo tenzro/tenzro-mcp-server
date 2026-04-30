@@ -222,6 +222,28 @@ async def get_block(height: int) -> str:
 
 
 @mcp.tool
+async def get_block_range(
+    start_height: int, end_height: int, max_results: int = 64
+) -> str:
+    """Fetch a contiguous range of blocks by height (default 64, max 256).
+
+    Returns block summaries plus `nextHeight` and `moreAvailable` so a lagging
+    client can paginate forward until caught up. `moreAvailable` reflects
+    whether the chain has further blocks beyond `nextHeight`, independent of
+    the requested `endHeight`, so a sync loop can step over pruning gaps.
+    """
+    result = await rpc_call(
+        "tenzro_getBlockRange",
+        {
+            "startHeight": start_height,
+            "endHeight": end_height,
+            "maxResults": max_results,
+        },
+    )
+    return json.dumps(result)
+
+
+@mcp.tool
 async def get_transaction(tx_hash: str) -> str:
     """Look up a transaction by its hash. Returns type, sender, recipient, amount, and status."""
     result = await rpc_call("eth_getTransactionByHash", [tx_hash])

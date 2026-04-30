@@ -10,7 +10,7 @@ The official [Model Context Protocol](https://modelcontextprotocol.io) server fo
 
 The Tenzro MCP server is an installable Python package that exposes blockchain and multi-modal AI tools across 19+ categories to any MCP-compatible AI agent (Claude, GPT, Cursor, Windsurf, etc.) via **stdio** or **Streamable HTTP** transport. Install with `pip install tenzro-mcp-server` and run locally, or connect directly to the live testnet endpoint. Agents can query balances, send transactions, mint NFTs, bridge tokens, check compliance, subscribe to events, run timeseries forecasts, embed images and text, segment and detect objects, transcribe audio, and interact with AI models — all through the standard MCP tool interface.
 
-The companion Tenzro Rust node MCP server (`crates/tenzro-node/src/mcp/server.rs`) registers **191 tools** including the 24 multi-modal AI tools described below.
+The companion Tenzro Rust node MCP server (`crates/tenzro-node/src/mcp/server.rs`) registers **193 tools** (169 base + 24 multi-modal AI) including the multi-modal AI tools described below.
 
 **Testnet endpoint:** `https://mcp.tenzro.network/mcp`
 **Local:** `http://localhost:3001/mcp`
@@ -106,7 +106,7 @@ Or with Streamable HTTP transport:
 
 ## Available Tools (146)
 
-The server provides **146 tools** across 18+ categories (count verified against `@mcp.tool` decorators in `tenzro_mcp_server/server.py`):
+The server provides **153 tools** across 18+ categories (count verified against `@mcp.tool` decorators in `tenzro_mcp_server/server.py`):
 
 ### Authentication (OAuth 2.1 + DPoP)
 
@@ -128,10 +128,11 @@ Pass `dpop_jkt` (RFC 7638 thumbprint of the holder's Ed25519 public key) to bind
 - `token_balance` — Get TNZO balance via token subsystem
 - `total_supply` — Get total TNZO supply
 
-### Node & Blocks (3 tools)
+### Node & Blocks (4 tools)
 
 - `get_node_status` — Node health, block height, peers, uptime, role
 - `get_block` — Get block by height with transactions
+- `get_block_range` — Batch-fetch a contiguous range of blocks for catch-up sync (max 256/call; returns `nextHeight` + `moreAvailable` for pagination)
 - `get_transaction` — Look up transaction by hash
 
 ### Identity (5 tools)
