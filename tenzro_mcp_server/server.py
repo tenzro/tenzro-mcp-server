@@ -1,4 +1,4 @@
-"""Tenzro Network MCP Server — 146 blockchain tools for AI agents.
+"""Tenzro Network MCP Server — 149 blockchain tools for AI agents.
 
 Exposes the full Tenzro Network JSON-RPC interface as MCP tools,
 enabling AI agents to interact with the Tenzro L1 settlement layer,
@@ -102,7 +102,7 @@ async def total_supply() -> str:
 
 
 # ---------------------------------------------------------------------------
-# OAuth 2.1 + DPoP Onboarding (5 tools)
+# OAuth 2.1 + DPoP Onboarding & Delegation (8 tools)
 # ---------------------------------------------------------------------------
 
 
@@ -199,6 +199,71 @@ async def link_wallet_for_auth(
     if ttl_secs:
         params["ttl_secs"] = ttl_secs
     result = await rpc_call("tenzro_linkWalletForAuth", [params])
+    return json.dumps(result)
+
+
+@mcp.tool
+async def exchange_token(
+    subject_token: str,
+    child_bearer_did: str,
+    child_dpop_jkt: str,
+    requested_rar: dict,
+    requested_aap_capabilities: list,
+    requested_ttl_secs: int = 0,
+) -> str:
+    """RFC 8693 OAuth 2.0 Token Exchange — mint a narrower child JWT.
+
+    Exchanges ``subject_token`` (a parent JWT) for a child JWT bound to
+    ``child_dpop_jkt`` (RFC 7638 thumbprint), with a strict subset of
+    the parent's RAR grants and AAP capabilities. The child token's
+    ``controller_did`` is set to the parent's ``sub``, extending the
+    act-chain by one hop.
+
+    Subset enforcement is performed by the AS — over-scoped requests
+    are rejected with JSON-RPC error ``-32002``. Pass
+    ``requested_ttl_secs=0`` to use the engine default (clamped to
+    parent's remaining lifetime).
+    """
+    params = {
+        "subject_token": subject_token,
+        "child_bearer_did": child_bearer_did,
+        "child_dpop_jkt": child_dpop_jkt,
+        "requested_rar": requested_rar,
+        "requested_aap_capabilities": requested_aap_capabilities,
+    }
+    if requested_ttl_secs:
+        params["requested_ttl_secs"] = requested_ttl_secs
+    result = await rpc_call("tenzro_exchangeToken", [params])
+    return json.dumps(result)
+
+
+@mcp.tool
+async def introspect_token(token: str) -> str:
+    """RFC 7662 OAuth 2.0 Token Introspection.
+
+    Ask the AS whether ``token`` is currently active and, if so,
+    return its full claim set (RAR ``authorization_details``, AAP
+    ``aap_*`` claims, ``cnf``, ``controller_did``, etc.). Per
+    RFC 7662 §2.2 a failed validation returns ``{"active": false}``
+    with no other fields — the AS does not leak why the token is
+    inactive.
+    """
+    result = await rpc_call("tenzro_introspectToken", [{"token": token}])
+    return json.dumps(result)
+
+
+@mcp.tool
+async def oauth_discovery() -> str:
+    """RFC 8414 / RFC 9728 OAuth Authorization Server / Protected
+    Resource Metadata.
+
+    Returns the same metadata document published at
+    ``GET /.well-known/openid-configuration``, augmented with AAP
+    extensions: ``authorization_details_types_supported`` (8 RAR
+    types), ``aap_claims_supported`` (7 AAP claims), and
+    ``dpop_signing_alg_values_supported`` (``["EdDSA"]``).
+    """
+    result = await rpc_call("tenzro_oauthDiscovery", [])
     return json.dumps(result)
 
 
@@ -339,6 +404,22 @@ async def verify_payment(
 async def list_payment_protocols() -> str:
     """List supported payment protocols (MPP, x402, native) and their capabilities."""
     result = await rpc_call("tenzro_paymentGatewayInfo", [])
+    return json.dumps(result)
+
+
+@mcp.tool
+async def list_x402_schemes() -> str:
+    """List the x402 scheme backends registered on this node.
+
+    Each scheme corresponds to a verification path under the x402 protocol:
+    'tenzro-hybrid' (Ed25519 hybrid sig over canonical preimage),
+    'exact-eip3009' (USDC EIP-3009 meta-tx via CDP facilitator),
+    'permit2' (Uniswap Permit2 via CDP facilitator),
+    'erc7710' (delegation redemption).
+
+    Use the returned ids in the 'extra.scheme' field of an x402 PaymentRequirement.
+    """
+    result = await rpc_call("tenzro_listX402Schemes", [])
     return json.dumps(result)
 
 
@@ -549,6 +630,75 @@ async def open_payment_channel(
 async def close_payment_channel(channel_id: str) -> str:
     """Close a micropayment channel and settle the final balances on-chain."""
     result = await rpc_call("tenzro_closePaymentChannel", [channel_id])
+    return json.dumps(result)
+
+
+# ---------------------------------------------------------------------------
+# AP2 — Agent Payments Protocol (3 tools)
+#
+# AP2 is Google/Stripe/Mastercard's verifiable-credential mandate model for
+# agentic commerce. The principal signs an IntentMandate ("agent X may spend
+# up to Y on Z before T") and the agent commits to a CartMandate (specific
+# basket + total). Both are wrapped in `Vdc` envelopes carrying Ed25519
+# signatures and a JCS-style canonical preimage.
+#
+# Position: TDIP identifies. AP2 authorizes. Tenzro settles.
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool
+async def ap2_verify_mandate(vdc: dict) -> str:
+    """Verify the Ed25519 signature on a Vdc-wrapped AP2 mandate (intent or cart).
+
+    Args:
+        vdc: The full Vdc JSON envelope as produced by the AP2 SDK.
+
+    Returns the mandate id, kind, signer DID, and signing algorithm on success;
+    `valid: false` with an error string on failure.
+    """
+    result = await rpc_call("tenzro_ap2VerifyMandate", [{"vdc": vdc}])
+    return json.dumps(result)
+
+
+@mcp.tool
+async def ap2_validate_mandate_pair(
+    intent_vdc: dict,
+    cart_vdc: dict,
+    enforce_delegation: bool = False,
+) -> str:
+    """Cross-validate an AP2 cart mandate against its parent intent mandate.
+
+    Checks both Vdc signatures, principal/agent binding, intent ceiling,
+    merchant whitelist, expiry, and (when ``enforce_delegation`` is true)
+    additionally enforces the agent's TDIP DelegationScope against the cart
+    total via ``IdentityRegistry::enforce_operation(agent_did, "payment", total)``.
+
+    Args:
+        intent_vdc: The principal-signed IntentMandate Vdc.
+        cart_vdc: The agent-signed CartMandate Vdc.
+        enforce_delegation: If true, run the TDIP delegation gate after
+            AP2 validation succeeds. Default false (AP2-only).
+
+    Returns ``valid: true`` with mandate ids on success; ``valid: false``
+    with an error string on failure. The response includes
+    ``delegation_enforced`` to surface which validation path ran.
+    """
+    result = await rpc_call(
+        "tenzro_ap2ValidateMandatePair",
+        [{
+            "intent_vdc": intent_vdc,
+            "cart_vdc": cart_vdc,
+            "enforce_delegation": enforce_delegation,
+        }],
+    )
+    return json.dumps(result)
+
+
+@mcp.tool
+async def ap2_protocol_info() -> str:
+    """Return AP2 protocol metadata: version, signing algorithm, mandate kinds,
+    presence modes, and the Tenzro positioning statement."""
+    result = await rpc_call("tenzro_ap2ProtocolInfo", [])
     return json.dumps(result)
 
 
@@ -1110,11 +1260,22 @@ async def search_agent_templates(query: str) -> str:
 
 
 @mcp.tool
-async def spawn_from_template(template_id: str) -> str:
-    """Spawn a new agent from a registered template."""
-    result = await rpc_call(
-        "tenzro_spawnAgentFromTemplate", [template_id]
-    )
+async def spawn_from_template(
+    template_id: str,
+    name: str = "MCP Spawned Agent",
+    parent_machine_did: str | None = None,
+) -> str:
+    """Spawn a new agent from a registered template.
+
+    When ``parent_machine_did`` is provided, the spawned agent's effective
+    delegation scope is the strict intersection of the parent's scope and
+    the template's spec — the child can never be broader than its parent
+    on any axis (numeric ceilings, allow-lists, time bound).
+    """
+    params: dict = {"template_id": template_id, "name": name}
+    if parent_machine_did is not None:
+        params["parent_machine_did"] = parent_machine_did
+    result = await rpc_call("tenzro_spawnAgentFromTemplate", params)
     return json.dumps(result)
 
 

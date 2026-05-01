@@ -108,7 +108,9 @@ Or with Streamable HTTP transport:
 
 The server provides **153 tools** across 18+ categories (count verified against `@mcp.tool` decorators in `tenzro_mcp_server/server.py`):
 
-### Authentication (OAuth 2.1 + DPoP)
+### Authentication (OAuth 2.1 + DPoP + AAP)
+
+The Tenzro Agent Access Protocol (AAP) layers seven `aap_*` claims on top of OAuth 2.1, DPoP-bound JWTs (RFC 9449), and Rich Authorization Requests (RFC 9396).
 
 - `onboard_human` — Provision a `did:tenzro:human:*` identity, MPC wallet, and access + refresh tokens (RFC 6749 + RFC 9449).
 - `onboard_delegated_agent` — Issue an agent identity bound to a controller DID with a delegation scope.
@@ -116,6 +118,9 @@ The server provides **153 tools** across 18+ categories (count verified against 
 - `refresh_token` — Exchange a refresh token for a fresh access token (refresh tokens are not rotated in V1).
 - `link_wallet_for_auth` — Mint a fresh access + refresh token pair against an existing MPC wallet.
 - `revoke_jwt` / `revoke_did` — Revoke a single JWT by `jti` or cascade-invalidate every JWT minted under a DID.
+- `oauth_discovery` — RFC 8414 Authorization Server Metadata discovery document.
+- `exchange_token` — RFC 8693 OAuth 2.0 Token Exchange for delegated/impersonation flows.
+- `introspect_token` — RFC 7662 OAuth 2.0 Token Introspection.
 
 Pass `dpop_jkt` (RFC 7638 thumbprint of the holder's Ed25519 public key) to bind the issued token — every subsequent privileged call must then carry a fresh DPoP proof signed by the same key.
 
@@ -148,6 +153,7 @@ Pass `dpop_jkt` (RFC 7638 thumbprint of the holder's Ed25519 public key) to bind
 - `create_payment_challenge` — Create MPP, x402, or native payment challenge
 - `verify_payment` — Verify payment credential and settle on-chain
 - `list_payment_protocols` — List supported payment protocols
+- `list_x402_schemes` — Discover registered x402 scheme adapters (`exact`, `permit2`, plus any pluggable extensions)
 - `settle_payment` — Execute immediate settlement
 - `create_escrow` — Build & sign a `CreateEscrow` transaction (consensus-mediated, gas: 75,000). VM derives `escrow_id` and locks funds at a derived vault address.
 - `release_escrow` — Build & sign a `ReleaseEscrow` transaction (payer-only, gas: 60,000)
@@ -155,6 +161,12 @@ Pass `dpop_jkt` (RFC 7638 thumbprint of the holder's Ed25519 public key) to bind
 - `get_escrow` — Read an escrow record by id (calls `tenzro_getEscrow`)
 - `open_payment_channel` — Open micropayment channel
 - `close_payment_channel` — Close payment channel with final balance
+
+### AP2 (Agent Payments Protocol)
+
+- `ap2_verify_mandate` — Verify a single Verifiable Digital Credential (VDC) envelope (intent or cart mandate)
+- `ap2_validate_mandate_pair` — Three-axis validation of an intent → cart mandate pair: AP2 mandate-level constraints + TDIP `DelegationScope` (`enforce_operation`) + runtime `SpendingPolicy` (`SpendingPolicySnapshot::check`)
+- `ap2_protocol_info` — AP2 protocol metadata and supported features
 
 ### AI Models (10 tools)
 
@@ -448,7 +460,7 @@ async with streamablehttp_client("https://mcp.tenzro.network/mcp") as (read, wri
 curl -s -X POST https://mcp.tenzro.network/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"curl","version":"1.0"}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl","version":"1.0"}}}'
 
 # List tools
 curl -s -X POST https://mcp.tenzro.network/mcp \
@@ -483,7 +495,7 @@ tenzro-mcp-server --transport http --port 3001
 curl -s -X POST http://localhost:3001/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
 ```
 
 ## Configuration
@@ -503,7 +515,7 @@ Command-line options:
 
 ## Protocol Details
 
-- **MCP Version:** 2024-11-05
+- **MCP Version:** 2025-11-25
 - **Transport:** Streamable HTTP (stateless JSON mode)
 - **Content Types:** `application/json`, `text/event-stream`
 - **Framework:** [fastmcp](https://pypi.org/project/fastmcp/)
