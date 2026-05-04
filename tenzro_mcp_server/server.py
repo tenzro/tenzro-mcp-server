@@ -309,6 +309,96 @@ async def get_block_range(
 
 
 @mcp.tool
+async def get_gas_price() -> str:
+    """Returns the current effective gas price in wei (base fee + suggested tip).
+
+    Tracks the EIP-1559 fee market — value adjusts ±12.5% per block based on
+    parent gas usage vs. the 15M target.
+    """
+    result = await rpc_call("eth_gasPrice", [])
+    return json.dumps({"gas_price_wei_hex": result})
+
+
+@mcp.tool
+async def get_max_priority_fee_per_gas() -> str:
+    """Returns a suggested EIP-1559 priority fee (tip) in wei.
+
+    Use this to fill `maxPriorityFeePerGas` on a Type-2 transaction. Derive
+    the base-fee portion from `get_fee_history` or the parent block's
+    `baseFeePerGas`.
+    """
+    result = await rpc_call("eth_maxPriorityFeePerGas", [])
+    return json.dumps({"max_priority_fee_per_gas_wei_hex": result})
+
+
+@mcp.tool
+async def get_fee_history(
+    block_count: int = 10,
+    newest_block: str = "latest",
+    reward_percentiles: list[float] | None = None,
+) -> str:
+    """Returns base-fee history and gas-usage ratios over the last N blocks.
+
+    `baseFeePerGas` has length `block_count + 1` — the last entry is the
+    predicted base fee for the next block, suitable as the floor of a Type-2
+    transaction's `maxFeePerGas`. `reward[i][j]` is the j-th requested
+    percentile of priority tips paid in block `oldestBlock + i` (omitted when
+    `reward_percentiles` is None or empty).
+    """
+    percentiles = reward_percentiles if reward_percentiles is not None else []
+    result = await rpc_call(
+        "eth_feeHistory",
+        [hex(block_count), newest_block, percentiles],
+    )
+    return json.dumps(result)
+
+
+@mcp.tool
+async def get_svm_cross_vm_program_info() -> str:
+    """Return the canonical Tenzro Cross-VM SVM-native program ID and instruction
+    discriminators. The program ID is deterministically derived as
+    `SHA-256("tenzro/svm/program/cross_vm/v1")`. Discriminators are
+    Anchor-style 8-byte `SHA-256("global:<snake_case_name>")[..8]`.
+
+    Use this to construct SVM Instructions targeting the Tenzro Cross-VM
+    native program from any SVM client (e.g. @solana/web3.js).
+    """
+    return json.dumps({
+        "program_id": {
+            "hex": "918f858b6b0dd134e9a1fcb73002428c5197093e76e536badc60382bb9f8ac78",
+            "base58": "AoD3kebB2bYjLKyJtaqkyXqwJy4oQ949SnVhMwEYzGXR",
+            "derivation_domain": "tenzro/svm/program/cross_vm/v1",
+        },
+        "instructions": {
+            "bridge_to_evm": {
+                "discriminator_hex": "92a8a45c33225f25",
+                "payload_size": 68,
+                "payload_layout": "mint(32) || evm_dest(20) || amount(u64 LE) || nonce(u64 LE)",
+            },
+            "bridge_from_evm": {
+                "discriminator_hex": "3038733289f4cd75",
+                "payload_size": 80,
+                "payload_layout": "mint(32) || svm_dest(32) || amount(u64 LE) || nonce(u64 LE)",
+            },
+            "register_token_pointer": {
+                "discriminator_hex": "9a8e01390f994522",
+                "payload_size": 84,
+                "payload_layout": "mint(32) || evm_token_address(20) || token_id(32)",
+            },
+            "transfer_cross_vm": {
+                "discriminator_hex": "bc684168aba7abb9",
+                "payload_size": 81,
+                "payload_layout": (
+                    "mint(32) || dest_vm(u8) || dest_address(32) || "
+                    "amount(u64 LE) || nonce(u64 LE)"
+                ),
+                "dest_vm_values": {"NATIVE": 0, "EVM": 1, "SVM": 2, "DAML": 3},
+            },
+        },
+    })
+
+
+@mcp.tool
 async def get_transaction(tx_hash: str) -> str:
     """Look up a transaction by its hash. Returns type, sender, recipient, amount, and status."""
     result = await rpc_call("eth_getTransactionByHash", [tx_hash])
