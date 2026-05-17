@@ -10,7 +10,7 @@ The official [Model Context Protocol](https://modelcontextprotocol.io) server fo
 
 The Tenzro MCP server is an installable Python package that exposes blockchain and multi-modal AI tools across 19+ categories to any MCP-compatible AI agent (Claude, GPT, Cursor, Windsurf, etc.) via **stdio** or **Streamable HTTP** transport. Install with `pip install tenzro-mcp-server` and run locally, or connect directly to the live testnet endpoint. Agents can query balances, send transactions, mint NFTs, bridge tokens, check compliance, subscribe to events, run timeseries forecasts, embed images and text, segment and detect objects, transcribe audio, and interact with AI models — all through the standard MCP tool interface.
 
-The companion Tenzro Rust node MCP server (`crates/tenzro-node/src/mcp/server.rs`) registers **200+ tools** (base + 24 multi-modal AI + 3 AgentBond/insurance) and is the authoritative tool inventory; this Python distributable exposes a comparable subset over stdio + Streamable HTTP.
+The companion Tenzro Rust node MCP server (`crates/tenzro-node/src/mcp/server.rs`) registers **247 tools** (base + 29 multi-modal AI + 3 AgentBond/insurance + 3 agent-memory) and is the authoritative tool inventory; this Python distributable exposes a comparable subset over stdio + Streamable HTTP.
 
 **Testnet endpoint:** `https://mcp.tenzro.network/mcp`
 **Local:** `http://localhost:3001/mcp`
@@ -205,7 +205,7 @@ Calldata is byte-identical to the native EVM precompiles `0x101a` / `0x101b` / `
 
 Per-modality `list_*_catalog`, `list_*_models`, `load_*_model`, `unload_*_model`, plus the modality verb. Catalogs draw from `OnnxForecastEntry`, `OnnxVisionEntry`, `OnnxTextEmbeddingEntry`, `OnnxSegmentationEntry`, `OnnxDetectionEntry`, `OnnxAudioEntry`, and `OnnxVideoEntry` in `tenzro-model`. License-tier gating (Permissive / Attribution / CommercialCustom / NonCommercial) is enforced at load time.
 
-- **Forecast** — `list_forecast_catalog`, `list_forecast_models`, `load_forecast_model`, `unload_forecast_model`, `forecast` (Chronos-2, Chronos-Bolt small/base, TimesFM 2.5 200M, Granite-TTM-r2)
+- **Forecast** — `list_forecast_catalog`, `list_forecast_models`, `load_forecast_model`, `unload_forecast_model`, `forecast` (TimesFM 2.5 200M)
 - **Vision** — `list_vision_catalog`, `list_vision_models`, `load_vision_model`, `unload_vision_model`, `vision_embed`, `vision_similarity` (CLIP ViT-B/32 + L/14, SigLIP2 base/large/so400m, DINOv3 vits16/vitb16/vitl16, DINOv2)
 - **Text Embedding** — `list_text_embedding_catalog`, `list_text_embedding_models`, `load_text_embedding_model`, `unload_text_embedding_model`, `text_embed` (Qwen3-Embedding 0.6B/4B/8B, EmbeddingGemma-300M Matryoshka, BGE-M3, Snowflake Arctic Embed L v2.0)
 - **Segmentation** — `list_segmentation_catalog`, `list_segmentation_models`, `load_segmentation_model`, `unload_segmentation_model`, `segment` (SAM 3 / 3.1, SAM 2 base/large, EdgeSAM, MobileSAM)
@@ -410,7 +410,7 @@ In addition to the main Tenzro MCP server, the node runs specialized servers for
 
 | Server | Port | Endpoint | Description |
 |--------|------|----------|-------------|
-| **Tenzro** | 3001 | `/mcp` | 196 tools for Tenzro Ledger + multi-modal AI + AgentBond/insurance |
+| **Tenzro** | 3001 | `/mcp` | 247 tools — Tenzro Ledger + multi-modal AI (forecast, vision, text-embed, segmentation, detection, audio ASR, video) + AgentBond/insurance + agent memory |
 | **Solana** | 3003 | `/mcp` | 14 tools — Jupiter swaps, SPL tokens, Metaplex NFTs, SNS, staking |
 | **Ethereum** | 3004 | `/mcp` | 16 tools — Chainlink feeds, ENS, ERC-20, EAS, ERC-8004 |
 | **Canton** | 3005 | `/mcp` | 14 tools — DAML contracts, CIP-56 tokens, DvP settlement |
