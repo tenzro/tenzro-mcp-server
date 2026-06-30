@@ -2762,6 +2762,67 @@ async def secure_mint_record_burn(asset_id: str, amount: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Stable-Asset Issuance — issuer-agnostic stable units on the reserve floor
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool
+async def register_stable_asset(
+    issuer: str,
+    unit_token: str,
+    symbol: str,
+    reserve_source: dict,
+    por_feed_id: str,
+    allowed_rails: list[str],
+    settlement_dst: str,
+) -> dict:
+    """Register or replace an issuer's stable-asset policy (issuer-agnostic
+    stable-unit issuance on the Secure-Mint reserve floor). Requires the
+    `issuer` API-key scope. `reserve_source` is
+    `{"kind": "custodial", "attester_did": ..., "asset_caip19": ...}` or
+    `{"kind": "on_chain_vault", "vault": ..., "asset_caip19": ...}`."""
+    return await rpc_call(
+        "tenzro_registerStableAsset",
+        {
+            "issuer": issuer,
+            "unit_token": unit_token,
+            "symbol": symbol,
+            "reserve_source": reserve_source,
+            "por_feed_id": por_feed_id,
+            "allowed_rails": allowed_rails,
+            "settlement_dst": settlement_dst,
+        },
+    )
+
+
+@mcp.tool
+async def get_stable_asset(issuer: str, unit_token: str) -> dict:
+    """Read an issuer's stable-asset policy."""
+    return await rpc_call(
+        "tenzro_getStableAsset", {"issuer": issuer, "unit_token": unit_token}
+    )
+
+
+@mcp.tool
+async def mint_stable_asset(issuer: str, unit_token: str, amount: str) -> dict:
+    """Mint stable units, hard-gated by the Secure-Mint reserve floor so
+    circulating can never exceed the attested reserve."""
+    return await rpc_call(
+        "tenzro_mintStableAsset",
+        {"issuer": issuer, "unit_token": unit_token, "amount": amount},
+    )
+
+
+@mcp.tool
+async def redeem_stable_asset(issuer: str, unit_token: str, amount: str) -> dict:
+    """Redeem (burn) stable units, decrementing circulating supply."""
+    return await rpc_call(
+        "tenzro_redeemStableAsset",
+        {"issuer": issuer, "unit_token": unit_token, "amount": amount},
+    )
+
+
+# ---------------------------------------------------------------------------
 # Hyperlane V3 (sovereign Tenzro-validator-set ISM)
 # ---------------------------------------------------------------------------
 
