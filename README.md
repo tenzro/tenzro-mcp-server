@@ -12,7 +12,7 @@ The Tenzro MCP server is an installable Python package that exposes blockchain a
 
 The companion Tenzro Rust node MCP server (`crates/tenzro-node/src/mcp/server.rs`) registers **414 tools** (Tenzro Ledger + multi-modal AI + AgentBond/insurance + agent memory) and is the authoritative tool inventory; this Python distributable exposes a comparable subset over stdio + Streamable HTTP.
 
-**Testnet endpoint:** `https://mcp.tenzro.network/mcp`
+**Testnet endpoint:** `https://mcp.tenzro.xyz/mcp`
 **Local:** `http://localhost:3001/mcp`
 
 ## Installation
@@ -41,7 +41,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "tenzro": {
-      "url": "https://mcp.tenzro.network/mcp"
+      "url": "https://mcp.tenzro.xyz/mcp"
     }
   }
 }
@@ -70,7 +70,7 @@ Add to your project's `.mcp.json`:
   "mcpServers": {
     "tenzro": {
       "type": "url",
-      "url": "https://mcp.tenzro.network/mcp"
+      "url": "https://mcp.tenzro.xyz/mcp"
     }
   }
 }
@@ -94,7 +94,7 @@ Add to your project's `.mcp.json`:
 **Option A: Connect to live testnet**
 - **Name:** tenzro
 - **Transport:** Streamable HTTP
-- **URL:** `https://mcp.tenzro.network/mcp`
+- **URL:** `https://mcp.tenzro.xyz/mcp`
 
 **Option B: Run locally**
 - **Name:** tenzro
@@ -153,7 +153,7 @@ Pass `dpop_jkt` (RFC 7638 thumbprint of the holder's Ed25519 public key) to bind
 - `create_payment_challenge` — Create MPP, x402, or native payment challenge
 - `verify_payment` — Verify payment credential and settle on-chain
 - `list_payment_protocols` — List supported payment protocols
-- `list_x402_schemes` — Discover registered x402 scheme adapters (`exact`, `permit2`, plus any pluggable extensions)
+- `list_x402_schemes` — Discover registered x402 scheme adapters (`tenzro-hybrid` default, `exact-eip3009`, `permit2`, `erc7710`)
 - `settle_payment` — Execute immediate settlement
 - `create_escrow` — Build & sign a `CreateEscrow` transaction (consensus-mediated, gas: 75,000). VM derives `escrow_id` and locks funds at a derived vault address.
 - `release_escrow` — Build & sign a `ReleaseEscrow` transaction (payer-only, gas: 60,000)
@@ -161,6 +161,17 @@ Pass `dpop_jkt` (RFC 7638 thumbprint of the holder's Ed25519 public key) to bind
 - `get_escrow` — Read an escrow record by id (calls `tenzro_getEscrow`)
 - `open_payment_channel` — Open micropayment channel
 - `close_payment_channel` — Close payment channel with final balance
+
+### x402 Bazaar (6 tools)
+
+A discovery catalog over the x402 payment surface: sellers register paid resources, buyers browse and verify offers before paying.
+
+- `x402_protocol_info` — x402 protocol metadata and registered scheme adapters (`tenzro-hybrid`, `exact-eip3009`, `permit2`, `erc7710`)
+- `x402_register_resource` — Register a paid resource listing (resource, scheme, network, asset, pay-to, max amount required, tags). Listing id is derived from `(seller_did, resource)`, so re-registration is idempotent.
+- `x402_discover_resources` — Browse listings, filtered by scheme / network / asset / tags
+- `x402_deregister_resource` — Remove a listing by id (seller-scoped)
+- `x402_verify_offer` — Validate a payment requirement against the registered scheme adapters before a buyer commits
+- `x402_payment_id` — Derive the deterministic payment id for a settlement
 
 ### AP2 v0.2 (Agent Payments Protocol)
 
@@ -517,6 +528,22 @@ Treasury config mutations (add/remove withdrawer, threshold) are admin-token-gat
 - `node_profile` — Hardware self-profile: build commit, CPU arch, OS, devices, derived serving capacity / backend / capability key
 - `cluster_plan` — Deterministic layer-wise LAN cluster placement for a model across candidate members
 
+### Managed Databases (11 tools)
+
+An engine-agnostic protocol layer over persistent state. A node either holds a thin stateless client to an operator-run engine (PostgreSQL / Qdrant / Valkey via URL config) or serves an embedded engine in-process (Lance / Tantivy). Milvus and Dgraph are catalog-only until a driver is linked. Placement is `local`, `lan_cluster`, or `network`; query bodies are per-engine dialects (SQL, vector search, full-text, command array).
+
+- `list_database_engines` — The engine catalog with placement modes and driver status
+- `create_database` — Create a database from a descriptor (engine, placement, access policy, optional confidential seal)
+- `get_database` — Read a database descriptor by id
+- `list_databases` — List databases on this node
+- `list_database_partitions` — List partitions for a database
+- `get_database_partition` — Read a single partition by index
+- `issue_database_connection` — Mint a scoped connection to the backing engine
+- `database_query` — Run an engine-native query (SQL / vector / full-text / command array)
+- `authorize_database_read` — Grant a reader access under the database's access policy
+- `rescale_database` — Change partition/replica count
+- `drop_database` — Delete a database and its partitions
+
 ## Ecosystem MCP Servers
 
 In addition to the main Tenzro MCP server, the node runs specialized servers for direct blockchain interaction:
@@ -540,7 +567,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 const transport = new StreamableHTTPClientTransport(
-  new URL("https://mcp.tenzro.network/mcp")
+  new URL("https://mcp.tenzro.xyz/mcp")
 );
 const client = new Client({ name: "my-app", version: "1.0.0" }, {});
 await client.connect(transport);
@@ -573,7 +600,7 @@ const nft = await client.callTool({
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 
-async with streamablehttp_client("https://mcp.tenzro.network/mcp") as (read, write):
+async with streamablehttp_client("https://mcp.tenzro.xyz/mcp") as (read, write):
     async with ClientSession(read, write) as session:
         await session.initialize()
 
@@ -597,19 +624,19 @@ async with streamablehttp_client("https://mcp.tenzro.network/mcp") as (read, wri
 
 ```bash
 # Initialize
-curl -s -X POST https://mcp.tenzro.network/mcp \
+curl -s -X POST https://mcp.tenzro.xyz/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl","version":"1.0"}}}'
 
 # List tools
-curl -s -X POST https://mcp.tenzro.network/mcp \
+curl -s -X POST https://mcp.tenzro.xyz/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
 
 # Call a tool
-curl -s -X POST https://mcp.tenzro.network/mcp \
+curl -s -X POST https://mcp.tenzro.xyz/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_node_status","arguments":{}}}'
@@ -642,8 +669,8 @@ curl -s -X POST http://localhost:3001/mcp \
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `TENZRO_RPC_URL` | `https://rpc.tenzro.network` | Tenzro JSON-RPC endpoint |
-| `TENZRO_API_URL` | `https://api.tenzro.network` | Tenzro Web API endpoint |
+| `TENZRO_RPC_URL` | `https://rpc.tenzro.xyz` | Tenzro JSON-RPC endpoint |
+| `TENZRO_API_URL` | `https://api.tenzro.xyz` | Tenzro Web API endpoint |
 
 Command-line options:
 
